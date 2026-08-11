@@ -10,7 +10,6 @@
   "postUpdateOptions": ["npmDedupe"],
   "skipInstalls": false,
   "timezone": "America/New_York",
-  "schedule": ["before 7am on monday"],
   "dependencyDashboard": true,
   "dependencyDashboardApproval": true,
   "prConcurrentLimit": 10,
@@ -24,7 +23,6 @@
   "platformAutomerge": true,
   "vulnerabilityAlerts": {
     "enabled": true,
-    "schedule": ["at any time"],
     "dependencyDashboardApproval": false,
     "automerge": false,
     "labels": ["security", "vulnerability"]
