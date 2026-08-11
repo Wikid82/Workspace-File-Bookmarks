@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.5.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.4.3...workspace-file-bookmarks-v1.5.0) (2026-08-11)
+
+
+### Features
+
+* publish pre-release builds from development ([c0e82df](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/c0e82dff7033ba527cb584385c6139027a2a0796))
+
+
+### Bug Fixes
+
+* restore release-please.yml, drop redundant propagation workflow ([aa0de28](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/aa0de282ae6e6689ebf20cabe99cca449e729fdd))
+* update repository URLs in package.json to match the correct project name ([b2812ed](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/b2812edbb9859b9995a16c8d7c3b22933bde42fa))
+
 ## [1.4.3](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.4.2...workspace-file-bookmarks-v1.4.3) (2026-08-11)
 
 
