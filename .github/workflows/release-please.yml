@@ -15,6 +15,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
+      upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
       - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         id: release
@@ -56,12 +57,37 @@ jobs:
       - name: Package extension
         run: npx @vscode/vsce package
 
+      # release-please-config.json sets draft:true for this package specifically so this step can
+      # run at all: GitHub's immutable-releases feature locks a release the instant it's published,
+      # so assets can only be attached while it's still a draft. We un-draft it in the next step,
+      # once the vsix is safely attached.
+      #
+      # GitHub's "get release by tag" API doesn't resolve drafts, so `gh release upload <tag>`
+      # can't find this release yet. Using upload_url (which release-please-action already gives
+      # us straight from the create-release response) sidesteps that lookup entirely.
+      #
       # Lets users grab the .vsix straight from the GitHub Release and "Install from VSIX...",
       # no Marketplace/Open VSX account or token needed for this path.
       - name: Attach VSIX to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${{ needs.release-please.outputs.tag_name }}" *.vsix --clobber
+          UPLOAD_URL: ${{ needs.release-please.outputs.upload_url }}
+        run: |
+          VSIX_FILE=$(ls *.vsix)
+          BASE_URL="${UPLOAD_URL%%\{*}"
+          curl -sSf -X POST \
+            -H "Authorization: token ${GH_TOKEN}" \
+            -H "Content-Type: application/octet-stream" \
+            --data-binary @"${VSIX_FILE}" \
+            "${BASE_URL}?name=${VSIX_FILE}"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPLOAD_URL: ${{ needs.release-please.outputs.upload_url }}
+        run: |
+          RELEASE_ID=$(echo "${UPLOAD_URL}" | sed -E 's#.*/releases/([0-9]+)/.*#\1#')
+          gh api -X PATCH "repos/${{ github.repository }}/releases/${RELEASE_ID}" -f draft=false
 
       # Publishes to the official VS Code Marketplace (skipped until VS_MARKETPLACE_TOKEN is set)
       - name: Publish to Visual Studio Marketplace

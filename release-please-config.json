@@ -4,6 +4,9 @@
   "pull-request-header": "Here's what's new in Workspace File Bookmarks",
   "pull-request-footer": "Merge this PR to cut the release.",
   "packages": {
-    ".": {}
+    ".": {
+      "draft": true,
+      "force-tag-creation": true
+    }
   }
 }
