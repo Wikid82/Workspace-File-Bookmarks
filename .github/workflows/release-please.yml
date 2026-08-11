@@ -89,9 +89,12 @@ jobs:
           RELEASE_ID=$(echo "${UPLOAD_URL}" | sed -E 's#.*/releases/([0-9]+)/.*#\1#')
           gh api -X PATCH "repos/${{ github.repository }}/releases/${RELEASE_ID}" -f draft=false
 
-      # Publishes to the official VS Code Marketplace (skipped until VS_MARKETPLACE_TOKEN is set)
+      # Publishes to the official VS Code Marketplace (skipped until VS_MARKETPLACE_TOKEN is set).
+      # continue-on-error so a failure here (e.g. re-running on an already-published version)
+      # doesn't prevent the independent Open VSX step below from running.
       - name: Publish to Visual Studio Marketplace
         if: ${{ env.VS_MARKETPLACE_TOKEN != '' }}
+        continue-on-error: true
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2
         with:
           pat: ${{ env.VS_MARKETPLACE_TOKEN }}
@@ -100,6 +103,7 @@ jobs:
       # Publishes to Open VSX Registry (skipped until OPEN_VSX_TOKEN is set)
       - name: Publish to Open VSX Registry
         if: ${{ env.OPEN_VSX_TOKEN != '' }}
+        continue-on-error: true
         uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2
         with:
           pat: ${{ env.OPEN_VSX_TOKEN }}
