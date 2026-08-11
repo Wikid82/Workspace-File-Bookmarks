@@ -38,6 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
         treeView,
         vscode.commands.registerCommand('workspace-file-bookmarks.addBookmark', () => addActiveFileBookmark(store)),
         vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkFromExplorer', (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) => addBookmarksForUris(store, uri, uris)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkToFolder', (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) => addBookmarksToFolder(store, uri, uris)),
         vscode.commands.registerCommand('workspace-file-bookmarks.removeBookmark', (item: BookmarkTreeItem) => store.removeBookmark(item.bookmark.id)),
         vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark)),
         vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () => createFolder(store)),
@@ -307,39 +308,57 @@ async function deleteFolder(store: BookmarkStore, item: FolderGroupItem) {
     store.deleteFolder(item.folder.id);
 }
 
-async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
-    const folders = store.getAllFolders();
-    const NEW_FOLDER = '$(new-folder) New Folder...';
-    const NO_FOLDER = '$(circle-slash) No Folder (root)';
+const NEW_FOLDER_PICK = '$(new-folder) New Folder...';
+const NO_FOLDER_PICK = '$(circle-slash) No Folder (root)';
 
+/** Prompts the user to choose a bookmark folder. Returns `undefined` if cancelled, `null` for root. */
+async function pickFolder(store: BookmarkStore, placeHolder: string): Promise<string | null | undefined> {
+    const folders = store.getAllFolders();
     const picked = await vscode.window.showQuickPick(
-        [NO_FOLDER, ...folders.map(f => f.name), NEW_FOLDER],
-        { placeHolder: `Move "${item.bookmark.label}" to...` }
+        [NO_FOLDER_PICK, ...folders.map(f => f.name), NEW_FOLDER_PICK],
+        { placeHolder }
     );
     if (!picked) {
-        return;
+        return undefined;
     }
 
-    if (picked === NO_FOLDER) {
-        store.moveBookmarkToFolder(item.bookmark.id, null);
-        return;
+    if (picked === NO_FOLDER_PICK) {
+        return null;
     }
 
-    if (picked === NEW_FOLDER) {
+    if (picked === NEW_FOLDER_PICK) {
         const name = await vscode.window.showInputBox({
             prompt: 'New bookmark folder name',
             validateInput: value => (value.trim().length === 0 ? 'Folder name cannot be empty.' : undefined)
         });
         if (!name) {
-            return;
+            return undefined;
         }
-        const folder = store.createFolder(name.trim());
-        store.moveBookmarkToFolder(item.bookmark.id, folder.id);
-        return;
+        return store.createFolder(name.trim()).id;
     }
 
-    const folder = folders.find(f => f.name === picked);
-    if (folder) {
-        store.moveBookmarkToFolder(item.bookmark.id, folder.id);
+    return folders.find(f => f.name === picked)?.id ?? undefined;
+}
+
+async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
+    const folderId = await pickFolder(store, `Move "${item.bookmark.label}" to...`);
+    if (folderId === undefined) {
+        return;
+    }
+    store.moveBookmarkToFolder(item.bookmark.id, folderId);
+}
+
+async function addBookmarksToFolder(store: BookmarkStore, uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) {
+    const targets = uris && uris.length > 0 ? uris : uri ? [uri] : [];
+    if (targets.length === 0) {
+        return;
+    }
+    const placeHolder = targets.length > 1 ? `Add ${targets.length} files to...` : `Add "${toBookmark(targets[0]).label}" to...`;
+    const folderId = await pickFolder(store, placeHolder);
+    if (folderId === undefined) {
+        return;
+    }
+    for (const target of targets) {
+        store.addBookmark({ ...toBookmark(target), folderId });
     }
 }

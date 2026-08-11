@@ -24,6 +24,13 @@
   "activationEvents": [],
   "main": "./dist/extension.cjs",
   "contributes": {
+    "submenus": [
+      {
+        "id": "workspace-file-bookmarks.addSubmenu",
+        "label": "Add to Bookmarks",
+        "icon": "$(bookmark)"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -52,6 +59,11 @@
       {
         "command": "workspace-file-bookmarks.addBookmarkFromExplorer",
         "title": "Add Bookmark",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.addBookmarkToFolder",
+        "title": "Add to Folder...",
         "category": "Workspace File Bookmarks"
       },
       {
@@ -160,9 +172,19 @@
       ],
       "explorer/context": [
         {
-          "command": "workspace-file-bookmarks.addBookmarkFromExplorer",
+          "submenu": "workspace-file-bookmarks.addSubmenu",
           "when": "!explorerResourceIsFolder",
           "group": "6_bookmark"
+        }
+      ],
+      "workspace-file-bookmarks.addSubmenu": [
+        {
+          "command": "workspace-file-bookmarks.addBookmarkFromExplorer",
+          "group": "1_add@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.addBookmarkToFolder",
+          "group": "1_add@2"
         }
       ]
     }
