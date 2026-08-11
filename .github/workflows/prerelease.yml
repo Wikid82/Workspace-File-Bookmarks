@@ -1,0 +1,72 @@
+name: Publish Pre-Release
+
+# development is the beta/nightly channel: every push here (an approved dependency
+# bump, a feature merge, a main->development sync) publishes a pre-release build
+# that users can opt into via "Switch to Pre-Release Version" in the Extensions view.
+#
+# Version follows VS Code Marketplace's odd/even convention (stable package.json
+# version is even-minor, e.g. 1.4.x) so pre-release users are always offered a
+# higher version than the current stable one: minor is bumped to the next odd
+# number, and patch is the workflow run number so it's always increasing. This is
+# computed at publish time only and never committed back to package.json/git.
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prerelease:
+    runs-on: ubuntu-latest
+    env:
+      VS_MARKETPLACE_TOKEN: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+      OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24.19.0
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compute pre-release version
+        id: version
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          IFS='.' read -r MAJOR MINOR _PATCH <<< "$CURRENT"
+          if [ $((MINOR % 2)) -eq 0 ]; then
+            MINOR=$((MINOR + 1))
+          fi
+          VERSION="${MAJOR}.${MINOR}.${{ github.run_number }}"
+          echo "Stable version is ${CURRENT}; publishing pre-release ${VERSION}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set package version (not committed)
+        run: npm version ${{ steps.version.outputs.version }} --no-git-tag-version --allow-same-version
+
+      - name: Publish to Visual Studio Marketplace
+        if: ${{ env.VS_MARKETPLACE_TOKEN != '' }}
+        continue-on-error: true
+        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2
+        with:
+          pat: ${{ env.VS_MARKETPLACE_TOKEN }}
+          registryUrl: https://marketplace.visualstudio.com
+          preRelease: true
+          skipDuplicate: true
+
+      - name: Publish to Open VSX Registry
+        if: ${{ env.OPEN_VSX_TOKEN != '' }}
+        continue-on-error: true
+        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2
+        with:
+          pat: ${{ env.OPEN_VSX_TOKEN }}
+          registryUrl: https://open-vsx.org
+          preRelease: true
+          skipDuplicate: true

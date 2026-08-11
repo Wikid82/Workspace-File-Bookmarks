@@ -25,12 +25,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Wikid82/file_bookmarks"
+    "url": "https://github.com/Wikid82/Workspace-File-Bookmarks"
   },
   "bugs": {
-    "url": "https://github.com/Wikid82/file_bookmarks/issues"
+    "url": "https://github.com/Wikid82/Workspace-File-Bookmarks/issues"
   },
-  "homepage": "https://github.com/Wikid82/file_bookmarks#readme",
+  "homepage": "https://github.com/Wikid82/Workspace-File-Bookmarks#readme",
   "engines": {
     "vscode": "^1.132.0"
   },
