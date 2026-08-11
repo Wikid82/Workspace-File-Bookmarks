@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.3.0...workspace-file-bookmarks-v1.4.0) (2026-08-11)
+
+
+### Features
+
+* polish marketplace listing and automate release publishing ([78cbf8e](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/78cbf8e3df9453f6f77429bffa6a11dc5a26dc2d))
+
 ## [1.3.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.2.0...workspace-file-bookmarks-v1.3.0) (2026-08-11)
 
 
