@@ -6,7 +6,7 @@
     ":separateMultipleMajorReleases",
     "helpers:pinGitHubActionDigests"
   ],
-  "baseBranchPatterns": ["development"],
+  "baseBranchPatterns": ["main"],
   "postUpdateOptions": ["npmDedupe"],
   "skipInstalls": false,
   "timezone": "America/New_York",
