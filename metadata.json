@@ -1,6 +1,0 @@
-{
-  "name": "Multi-Repo Bookmark Extension Studio",
-  "description": "Interactive VS Code simulator & extension code generator for multi-repo file bookmarking with repository sorting and custom folder hierarchies.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

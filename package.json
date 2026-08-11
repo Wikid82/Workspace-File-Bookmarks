@@ -1,17 +1,28 @@
 {
   "name": "file-bookmarks",
+  "displayName": "File Bookmarks",
+  "description": "Bookmark files across multi-repo VS Code workspaces for quick access.",
   "publisher": "Wikid82",
   "private": false,
   "version": "0.0.1",
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "bookmarks",
+    "multi-root",
+    "workspace",
+    "navigation"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/Wikid82/file_bookmarks"
   },
   "engines": {
-    "vscode": "^1.132.0"
+    "vscode": "^1.125.0"
   },
   "activationEvents": [],
-  "main": "extension.cjs",
+  "main": "./dist/extension.cjs",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
@@ -25,42 +36,75 @@
     "views": {
       "file-bookmarks-sidebar": [
         {
-          "type": "webview",
           "id": "file-bookmarks-view",
           "name": "My Bookmarks",
           "icon": "media/bookmark-icon.svg"
         }
       ]
+    },
+    "commands": [
+      {
+        "command": "file-bookmarks.addBookmark",
+        "title": "Add Bookmark",
+        "category": "File Bookmarks",
+        "icon": "$(bookmark)"
+      },
+      {
+        "command": "file-bookmarks.addBookmarkFromExplorer",
+        "title": "Add Bookmark",
+        "category": "File Bookmarks"
+      },
+      {
+        "command": "file-bookmarks.removeBookmark",
+        "title": "Remove Bookmark",
+        "category": "File Bookmarks",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "file-bookmarks.addBookmark",
+          "when": "view == file-bookmarks-view",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "file-bookmarks.removeBookmark",
+          "when": "view == file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "inline"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "file-bookmarks.addBookmark",
+          "group": "navigation",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "file-bookmarks.addBookmarkFromExplorer",
+          "when": "!explorerResourceIsFolder",
+          "group": "6_bookmark"
+        }
+      ]
     }
   },
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build && esbuild src/extension.ts --bundle --platform=node --format=cjs --sourcemap --outfile=dist/extension.cjs",
-    "start": "node dist/server.cjs",
-    "clean": "rm -rf dist server.js",
+    "build": "esbuild extension.ts --bundle --platform=node --format=cjs --sourcemap --external:vscode --outfile=dist/extension.cjs",
+    "watch": "esbuild extension.ts --bundle --platform=node --format=cjs --sourcemap --external:vscode --outfile=dist/extension.cjs --watch",
+    "vscode:prepublish": "npm run build",
+    "package": "bash scripts/rebuild.sh",
+    "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@google/genai": "^2.16.0",
-    "@tailwindcss/vite": "^4.3.3",
-    "@vitejs/plugin-react": "^6.0.5",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "jszip": "^3.10.1",
-    "lucide-react": "^1.31.0",
-    "motion": "^13.1.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "vite": "^8.2.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
-    "autoprefixer": "^10.5.4",
+    "@types/vscode": "^1.125.0",
+    "@vscode/vsce": "^3.6.2",
     "esbuild": "^0.28.2",
-    "tailwindcss": "^4.3.3",
-    "tsx": "^4.23.12",
-    "typescript": "~5.9.3",
-    "vite": "^8.2.1",
-    "@types/express": "^5.0.6"
+    "typescript": "~5.9.3"
   }
 }
