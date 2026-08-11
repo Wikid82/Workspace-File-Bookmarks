@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.4.0...workspace-file-bookmarks-v1.4.1) (2026-08-11)
+
+
+### Bug Fixes
+
+* correct release-please output key names for root component ([5479729](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/5479729325ec009391fe794d9e0f448817d400d0))
+
 ## [1.4.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.3.0...workspace-file-bookmarks-v1.4.0) (2026-08-11)
 
 
