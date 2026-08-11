@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.3](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.4.2...workspace-file-bookmarks-v1.4.3) (2026-08-11)
+
+
+### Bug Fixes
+
+* make Marketplace and Open VSX publish steps independent ([d4d606e](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/d4d606e033b2b35040f030300e7eac95c8b29464))
+
 ## [1.4.2](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.4.1...workspace-file-bookmarks-v1.4.2) (2026-08-11)
 
 
