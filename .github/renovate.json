@@ -24,6 +24,7 @@
   "platformAutomerge": true,
   "vulnerabilityAlerts": {
     "enabled": true,
+    "schedule": ["at any time"],
     "dependencyDashboardApproval": false,
     "automerge": false,
     "labels": ["security", "vulnerability"]
