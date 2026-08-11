@@ -35,7 +35,7 @@
   },
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild extension.ts --bundle --platform=node --format=cjs --sourcemap --outfile=dist/extension.cjs",
+    "build": "vite build && esbuild src/extension.ts --bundle --platform=node --format=cjs --sourcemap --outfile=dist/extension.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
