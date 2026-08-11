@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.2.0...workspace-file-bookmarks-v1.3.0) (2026-08-11)
+
+
+### Features
+
+* add functionality to organize bookmarks into folders and enhance command structure ([6a7c306](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/6a7c306e3617a0efc4e73975b6f2be66f0d90165))
+
 ## [1.2.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.1.0...workspace-file-bookmarks-v1.2.0) (2026-08-11)
 
 
