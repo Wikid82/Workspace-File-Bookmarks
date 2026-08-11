@@ -19,7 +19,7 @@
     "url": "https://github.com/Wikid82/file_bookmarks"
   },
   "engines": {
-    "vscode": "^1.125.0"
+    "vscode": "^1.132.0"
   },
   "activationEvents": [],
   "main": "./dist/extension.cjs",
@@ -103,7 +103,7 @@
   "devDependencies": {
     "@types/node": "^24.13.3",
     "@types/vscode": "^1.125.0",
-    "@vscode/vsce": "^3.6.2",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.2",
     "typescript": "~5.9.3"
   }
