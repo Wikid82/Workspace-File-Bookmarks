@@ -1,31 +1,52 @@
 import * as vscode from 'vscode';
 
-const STORAGE_KEY = 'fileBookmarks.bookmarks';
+const STORAGE_KEY_BOOKMARKS = 'fileBookmarks.bookmarks';
+const STORAGE_KEY_FOLDERS = 'fileBookmarks.folders';
+const STORAGE_KEY_VIEW_MODE = 'fileBookmarks.viewMode';
+const VIEW_MODE_CONTEXT_KEY = 'workspace-file-bookmarks.viewMode';
+
+type ViewMode = 'tree' | 'list';
 
 interface Bookmark {
     id: string;
     uri: string;
     label: string;
     relativePath: string;
-    folderName: string;
+    workspaceFolderName: string;
+    folderId: string | null;
+    createdAt: number;
+}
+
+interface BookmarkFolder {
+    id: string;
+    name: string;
     createdAt: number;
 }
 
 export function activate(context: vscode.ExtensionContext) {
     const store = new BookmarkStore(context);
-    const provider = new BookmarksTreeProvider(store);
+    const provider = new BookmarksTreeProvider(store, context);
 
     const treeView = vscode.window.createTreeView('workspace-file-bookmarks-view', {
         treeDataProvider: provider,
         showCollapseAll: true
     });
 
+    vscode.commands.executeCommand('setContext', VIEW_MODE_CONTEXT_KEY, provider.getViewMode());
+
     context.subscriptions.push(
         treeView,
         vscode.commands.registerCommand('workspace-file-bookmarks.addBookmark', () => addActiveFileBookmark(store)),
-        vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkFromExplorer', (uri: vscode.Uri | undefined) => addBookmarkForUri(store, uri)),
-        vscode.commands.registerCommand('workspace-file-bookmarks.removeBookmark', (item: BookmarkTreeItem) => store.remove(item.bookmark.id)),
-        vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark))
+        vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkFromExplorer', (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) => addBookmarksForUris(store, uri, uris)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.removeBookmark', (item: BookmarkTreeItem) => store.removeBookmark(item.bookmark.id)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () => createFolder(store)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.renameFolder', (item: FolderGroupItem) => renameFolder(store, item)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.deleteFolder', (item: FolderGroupItem) => deleteFolder(store, item)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.moveToFolder', (item: BookmarkTreeItem) => moveToFolder(store, item)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.openAllInFolder', (item: FolderGroupItem) => openAllInFolder(store, item)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.setViewModeList', () => provider.setViewMode('list')),
+        vscode.commands.registerCommand('workspace-file-bookmarks.setViewModeTree', () => provider.setViewMode('tree'))
     );
 }
 
@@ -37,42 +58,74 @@ class BookmarkStore {
 
     constructor(private readonly context: vscode.ExtensionContext) {}
 
-    getAll(): Bookmark[] {
-        return this.context.workspaceState.get<Bookmark[]>(STORAGE_KEY, []);
+    getAllBookmarks(): Bookmark[] {
+        return this.context.workspaceState.get<Bookmark[]>(STORAGE_KEY_BOOKMARKS, []);
     }
 
-    add(bookmark: Bookmark) {
-        const existing = this.getAll();
+    getAllFolders(): BookmarkFolder[] {
+        return this.context.workspaceState.get<BookmarkFolder[]>(STORAGE_KEY_FOLDERS, []);
+    }
+
+    addBookmark(bookmark: Bookmark) {
+        const existing = this.getAllBookmarks();
         if (existing.some(b => b.uri === bookmark.uri)) {
             vscode.window.showInformationMessage(`Already bookmarked: ${bookmark.relativePath}`);
             return;
         }
-        this.setAll([bookmark, ...existing]);
+        this.setBookmarks([bookmark, ...existing]);
     }
 
-    remove(id: string) {
-        this.setAll(this.getAll().filter(b => b.id !== id));
+    removeBookmark(id: string) {
+        this.setBookmarks(this.getAllBookmarks().filter(b => b.id !== id));
     }
 
-    private setAll(bookmarks: Bookmark[]) {
-        this.context.workspaceState.update(STORAGE_KEY, bookmarks);
+    moveBookmarkToFolder(id: string, folderId: string | null) {
+        this.setBookmarks(this.getAllBookmarks().map(b => (b.id === id ? { ...b, folderId } : b)));
+    }
+
+    createFolder(name: string): BookmarkFolder {
+        const folder: BookmarkFolder = {
+            id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            name,
+            createdAt: Date.now()
+        };
+        this.setFolders([...this.getAllFolders(), folder]);
+        return folder;
+    }
+
+    renameFolder(id: string, name: string) {
+        this.setFolders(this.getAllFolders().map(f => (f.id === id ? { ...f, name } : f)));
+    }
+
+    deleteFolder(id: string) {
+        this.setFolders(this.getAllFolders().filter(f => f.id !== id));
+        this.setBookmarks(this.getAllBookmarks().map(b => (b.folderId === id ? { ...b, folderId: null } : b)));
+    }
+
+    private setBookmarks(bookmarks: Bookmark[]) {
+        this.context.workspaceState.update(STORAGE_KEY_BOOKMARKS, bookmarks);
+        this._onDidChange.fire();
+    }
+
+    private setFolders(folders: BookmarkFolder[]) {
+        this.context.workspaceState.update(STORAGE_KEY_FOLDERS, folders);
         this._onDidChange.fire();
     }
 }
 
 class FolderGroupItem extends vscode.TreeItem {
-    constructor(public readonly folderName: string, public readonly bookmarks: Bookmark[]) {
-        super(folderName, vscode.TreeItemCollapsibleState.Expanded);
-        this.contextValue = 'bookmarkFolderGroup';
+    constructor(public readonly folder: BookmarkFolder, public readonly bookmarks: Bookmark[]) {
+        super(folder.name, vscode.TreeItemCollapsibleState.Expanded);
+        this.contextValue = 'bookmarkFolder';
         this.iconPath = new vscode.ThemeIcon('folder');
         this.description = `${bookmarks.length}`;
     }
 }
 
 class BookmarkTreeItem extends vscode.TreeItem {
-    constructor(public readonly bookmark: Bookmark) {
+    constructor(public readonly bookmark: Bookmark, descriptionParts: string[]) {
         super(bookmark.label, vscode.TreeItemCollapsibleState.None);
-        this.description = bookmark.relativePath;
+        this.description = descriptionParts.join(' • ');
         this.tooltip = bookmark.relativePath;
         this.iconPath = new vscode.ThemeIcon('bookmark');
         this.contextValue = 'bookmarkItem';
@@ -90,8 +143,22 @@ class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     private readonly _onDidChangeTreeData = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-    constructor(private readonly store: BookmarkStore) {
+    private viewMode: ViewMode;
+
+    constructor(private readonly store: BookmarkStore, private readonly context: vscode.ExtensionContext) {
+        this.viewMode = this.context.workspaceState.get<ViewMode>(STORAGE_KEY_VIEW_MODE, 'tree');
         store.onDidChange(() => this._onDidChangeTreeData.fire());
+    }
+
+    getViewMode(): ViewMode {
+        return this.viewMode;
+    }
+
+    setViewMode(mode: ViewMode) {
+        this.viewMode = mode;
+        this.context.workspaceState.update(STORAGE_KEY_VIEW_MODE, mode);
+        vscode.commands.executeCommand('setContext', VIEW_MODE_CONTEXT_KEY, mode);
+        this._onDidChangeTreeData.fire();
     }
 
     getTreeItem(element: TreeNode): vscode.TreeItem {
@@ -99,32 +166,61 @@ class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     getChildren(element?: TreeNode): TreeNode[] {
+        const isMultiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
+        const folders = this.store.getAllFolders();
+        const bookmarks = this.store.getAllBookmarks();
+
+        if (this.viewMode === 'list') {
+            if (element) {
+                return [];
+            }
+            const folderById = new Map(folders.map(f => [f.id, f.name]));
+            return bookmarks
+                .slice()
+                .sort((a, b) => b.createdAt - a.createdAt)
+                .map(b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, folderById.get(b.folderId ?? '') ?? null)));
+        }
+
         if (element instanceof FolderGroupItem) {
             return element.bookmarks
                 .slice()
                 .sort((a, b) => b.createdAt - a.createdAt)
-                .map(b => new BookmarkTreeItem(b));
+                .map(b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)));
         }
 
-        const bookmarks = this.store.getAll();
-        const folderNames = new Set(bookmarks.map(b => b.folderName));
-
-        if (folderNames.size <= 1) {
-            return bookmarks
-                .slice()
-                .sort((a, b) => b.createdAt - a.createdAt)
-                .map(b => new BookmarkTreeItem(b));
+        if (element) {
+            return [];
         }
 
-        return Array.from(folderNames)
-            .sort()
-            .map(name => new FolderGroupItem(name, bookmarks.filter(b => b.folderName === name)));
+        const folderNodes = folders
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(folder => new FolderGroupItem(folder, bookmarks.filter(b => b.folderId === folder.id)));
+
+        const ungrouped = bookmarks
+            .filter(b => !b.folderId)
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .map(b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)));
+
+        return [...folderNodes, ...ungrouped];
     }
+}
+
+function describeBookmark(bookmark: Bookmark, isMultiRoot: boolean, folderName: string | null): string[] {
+    const parts: string[] = [];
+    if (folderName) {
+        parts.push(folderName);
+    }
+    if (isMultiRoot) {
+        parts.push(bookmark.workspaceFolderName);
+    }
+    parts.push(bookmark.relativePath);
+    return parts;
 }
 
 function toBookmark(uri: vscode.Uri): Bookmark {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-    const folderName = workspaceFolder?.name ?? 'Workspace';
+    const workspaceFolderName = workspaceFolder?.name ?? 'Workspace';
     const relativePath = workspaceFolder ? vscode.workspace.asRelativePath(uri, false) : uri.fsPath;
     const label = relativePath.split('/').pop() || relativePath;
 
@@ -133,7 +229,8 @@ function toBookmark(uri: vscode.Uri): Bookmark {
         uri: uri.toString(),
         label,
         relativePath,
-        folderName,
+        workspaceFolderName,
+        folderId: null,
         createdAt: Date.now()
     };
 }
@@ -144,14 +241,14 @@ function addActiveFileBookmark(store: BookmarkStore) {
         vscode.window.showWarningMessage('Open a file to bookmark it.');
         return;
     }
-    store.add(toBookmark(editor.document.uri));
+    store.addBookmark(toBookmark(editor.document.uri));
 }
 
-function addBookmarkForUri(store: BookmarkStore, uri: vscode.Uri | undefined) {
-    if (!uri) {
-        return;
+function addBookmarksForUris(store: BookmarkStore, uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) {
+    const targets = uris && uris.length > 0 ? uris : uri ? [uri] : [];
+    for (const target of targets) {
+        store.addBookmark(toBookmark(target));
     }
-    store.add(toBookmark(uri));
 }
 
 async function openBookmark(bookmark: Bookmark) {
@@ -161,5 +258,88 @@ async function openBookmark(bookmark: Bookmark) {
         await vscode.window.showTextDocument(document, { preview: false });
     } catch {
         vscode.window.showErrorMessage(`Could not open "${bookmark.relativePath}". The file may have been moved or deleted.`);
+    }
+}
+
+async function openAllInFolder(store: BookmarkStore, item: FolderGroupItem) {
+    if (item.bookmarks.length === 0) {
+        vscode.window.showInformationMessage(`"${item.folder.name}" has no bookmarks.`);
+        return;
+    }
+    for (const bookmark of item.bookmarks) {
+        await openBookmark(bookmark);
+    }
+}
+
+async function createFolder(store: BookmarkStore) {
+    const name = await vscode.window.showInputBox({
+        prompt: 'New bookmark folder name',
+        placeHolder: 'e.g. Backend, In Review, TODO',
+        validateInput: value => (value.trim().length === 0 ? 'Folder name cannot be empty.' : undefined)
+    });
+    if (name) {
+        store.createFolder(name.trim());
+    }
+}
+
+async function renameFolder(store: BookmarkStore, item: FolderGroupItem) {
+    const name = await vscode.window.showInputBox({
+        prompt: 'Rename bookmark folder',
+        value: item.folder.name,
+        validateInput: value => (value.trim().length === 0 ? 'Folder name cannot be empty.' : undefined)
+    });
+    if (name) {
+        store.renameFolder(item.folder.id, name.trim());
+    }
+}
+
+async function deleteFolder(store: BookmarkStore, item: FolderGroupItem) {
+    if (item.bookmarks.length > 0) {
+        const confirm = await vscode.window.showWarningMessage(
+            `Delete folder "${item.folder.name}"? ${item.bookmarks.length} bookmark(s) will move to the root list.`,
+            { modal: true },
+            'Delete'
+        );
+        if (confirm !== 'Delete') {
+            return;
+        }
+    }
+    store.deleteFolder(item.folder.id);
+}
+
+async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
+    const folders = store.getAllFolders();
+    const NEW_FOLDER = '$(new-folder) New Folder...';
+    const NO_FOLDER = '$(circle-slash) No Folder (root)';
+
+    const picked = await vscode.window.showQuickPick(
+        [NO_FOLDER, ...folders.map(f => f.name), NEW_FOLDER],
+        { placeHolder: `Move "${item.bookmark.label}" to...` }
+    );
+    if (!picked) {
+        return;
+    }
+
+    if (picked === NO_FOLDER) {
+        store.moveBookmarkToFolder(item.bookmark.id, null);
+        return;
+    }
+
+    if (picked === NEW_FOLDER) {
+        const name = await vscode.window.showInputBox({
+            prompt: 'New bookmark folder name',
+            validateInput: value => (value.trim().length === 0 ? 'Folder name cannot be empty.' : undefined)
+        });
+        if (!name) {
+            return;
+        }
+        const folder = store.createFolder(name.trim());
+        store.moveBookmarkToFolder(item.bookmark.id, folder.id);
+        return;
+    }
+
+    const folder = folders.find(f => f.name === picked);
+    if (folder) {
+        store.moveBookmarkToFolder(item.bookmark.id, folder.id);
     }
 }

@@ -59,6 +59,46 @@
         "title": "Remove Bookmark",
         "category": "Workspace File Bookmarks",
         "icon": "$(trash)"
+      },
+      {
+        "command": "workspace-file-bookmarks.createFolder",
+        "title": "New Bookmark Folder",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "workspace-file-bookmarks.renameFolder",
+        "title": "Rename Folder",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.deleteFolder",
+        "title": "Delete Folder",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "workspace-file-bookmarks.moveToFolder",
+        "title": "Move to Folder...",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.openAllInFolder",
+        "title": "Open All Files in Folder",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "workspace-file-bookmarks.setViewModeList",
+        "title": "View as List",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(list-flat)"
+      },
+      {
+        "command": "workspace-file-bookmarks.setViewModeTree",
+        "title": "View as Tree",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(list-tree)"
       }
     ],
     "menus": {
@@ -66,7 +106,22 @@
         {
           "command": "workspace-file-bookmarks.addBookmark",
           "when": "view == workspace-file-bookmarks-view",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.createFolder",
+          "when": "view == workspace-file-bookmarks-view",
+          "group": "navigation@2"
+        },
+        {
+          "command": "workspace-file-bookmarks.setViewModeList",
+          "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == tree",
+          "group": "navigation@3"
+        },
+        {
+          "command": "workspace-file-bookmarks.setViewModeTree",
+          "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == list",
+          "group": "navigation@3"
         }
       ],
       "view/item/context": [
@@ -74,6 +129,26 @@
           "command": "workspace-file-bookmarks.removeBookmark",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
           "group": "inline"
+        },
+        {
+          "command": "workspace-file-bookmarks.moveToFolder",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "1_modification"
+        },
+        {
+          "command": "workspace-file-bookmarks.openAllInFolder",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
+          "group": "inline@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.deleteFolder",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
+          "group": "inline@2"
+        },
+        {
+          "command": "workspace-file-bookmarks.renameFolder",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
+          "group": "1_modification"
         }
       ],
       "editor/title": [
