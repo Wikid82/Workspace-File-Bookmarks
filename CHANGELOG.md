@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.4.1...workspace-file-bookmarks-v1.4.2) (2026-08-11)
+
+
+### Bug Fixes
+
+* work around GitHub immutable releases for asset uploads ([e462021](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/e46202154fb94b7ba013951b5c24ff746783a56b))
+
 ## [1.4.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.4.0...workspace-file-bookmarks-v1.4.1) (2026-08-11)
 
 

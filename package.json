@@ -4,7 +4,7 @@
   "description": "Bookmark files across multi-repo VS Code workspaces for quick access.",
   "publisher": "Wikid82",
   "private": false,
-  "version": "1.4.1",
+  "version": "1.4.2",
   "icon": "media/icon.png",
   "categories": [
     "Other"
