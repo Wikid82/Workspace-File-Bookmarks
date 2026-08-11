@@ -1,0 +1,13 @@
+.git/**
+.github/**
+node_modules/**
+src/**
+server.ts
+tsconfig.json
+vite.config.ts
+vite.config.js
+bun.lock
+.env.example
+.gitignore
+index.html
+metadata.json

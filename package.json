@@ -1,11 +1,41 @@
 {
-  "name": "react-example",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "file-bookmarks",
+  "publisher": "Wikid82",
+  "private": false,
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Wikid82/file_bookmarks"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "activationEvents": [],
+  "main": "extension.cjs",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "file-bookmarks-sidebar",
+          "title": "File Bookmarks",
+          "icon": "media/bookmark-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "file-bookmarks-sidebar": [
+        {
+          "type": "webview",
+          "id": "file-bookmarks-view",
+          "name": "My Bookmarks",
+          "icon": "media/bookmark-icon.svg"
+        }
+      ]
+    }
+  },
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build": "vite build && esbuild extension.ts --bundle --platform=node --format=cjs --sourcemap --outfile=dist/extension.cjs",
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
