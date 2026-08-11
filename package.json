@@ -8,7 +8,7 @@
     "url": "https://github.com/Wikid82/file_bookmarks"
   },
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.132.0"
   },
   "activationEvents": [],
   "main": "extension.cjs",
@@ -41,25 +41,25 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
-    "@tailwindcss/vite": "^4.1.14",
+    "@google/genai": "^2.16.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.0.5",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jszip": "^3.10.1",
     "lucide-react": "^1.31.0",
     "motion": "^13.1.0",
-    "react": "^19.0.1",
-    "react-dom": "^19.0.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
     "vite": "^8.2.1"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
-    "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
-    "tailwindcss": "^4.1.14",
-    "tsx": "^4.21.0",
-    "typescript": "~5.8.2",
+    "autoprefixer": "^10.5.4",
+    "esbuild": "^0.28.2",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.12",
+    "typescript": "~5.9.3",
     "vite": "^8.2.1",
     "@types/express": "^5.0.6"
   }
