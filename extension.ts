@@ -15,17 +15,17 @@ export function activate(context: vscode.ExtensionContext) {
     const store = new BookmarkStore(context);
     const provider = new BookmarksTreeProvider(store);
 
-    const treeView = vscode.window.createTreeView('file-bookmarks-view', {
+    const treeView = vscode.window.createTreeView('workspace-file-bookmarks-view', {
         treeDataProvider: provider,
         showCollapseAll: true
     });
 
     context.subscriptions.push(
         treeView,
-        vscode.commands.registerCommand('file-bookmarks.addBookmark', () => addActiveFileBookmark(store)),
-        vscode.commands.registerCommand('file-bookmarks.addBookmarkFromExplorer', (uri: vscode.Uri | undefined) => addBookmarkForUri(store, uri)),
-        vscode.commands.registerCommand('file-bookmarks.removeBookmark', (item: BookmarkTreeItem) => store.remove(item.bookmark.id)),
-        vscode.commands.registerCommand('file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark))
+        vscode.commands.registerCommand('workspace-file-bookmarks.addBookmark', () => addActiveFileBookmark(store)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkFromExplorer', (uri: vscode.Uri | undefined) => addBookmarkForUri(store, uri)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.removeBookmark', (item: BookmarkTreeItem) => store.remove(item.bookmark.id)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark))
     );
 }
 
@@ -77,7 +77,7 @@ class BookmarkTreeItem extends vscode.TreeItem {
         this.iconPath = new vscode.ThemeIcon('bookmark');
         this.contextValue = 'bookmarkItem';
         this.command = {
-            command: 'file-bookmarks.openBookmark',
+            command: 'workspace-file-bookmarks.openBookmark',
             title: 'Open Bookmark',
             arguments: [bookmark]
         };

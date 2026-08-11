@@ -1,12 +1,12 @@
 name: Feature request
-description: Suggest a feature or improvement for File Bookmarks
+description: Suggest a feature or improvement for Workspace File Bookmarks
 labels: ["enhancement"]
 body:
   - type: textarea
     id: problem
     attributes:
       label: What problem does this solve?
-      description: What are you trying to do, and where does File Bookmarks currently fall short?
+      description: What are you trying to do, and where does Workspace File Bookmarks currently fall short?
     validations:
       required: true
   - type: textarea
@@ -23,11 +23,3 @@ body:
       description: Any other ways to solve this you've thought about?
     validations:
       required: false
-  - type: checkboxes
-    id: household-fit
-    attributes:
-      label: Household fit
-      description: File Bookmarks is built as a family chore chart, not a general task tracker — help us keep scope focused
-      options:
-        - label: This is useful for a household managing chores/points/rewards, not a software-team workflow feature
-          required: true

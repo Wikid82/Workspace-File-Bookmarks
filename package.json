@@ -1,6 +1,6 @@
 {
-  "name": "file-bookmarks",
-  "displayName": "File Bookmarks",
+  "name": "workspace-file-bookmarks",
+  "displayName": "Workspace File Bookmarks",
   "description": "Bookmark files across multi-repo VS Code workspaces for quick access.",
   "publisher": "Wikid82",
   "private": false,
@@ -27,16 +27,16 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "file-bookmarks-sidebar",
-          "title": "File Bookmarks",
+          "id": "workspace-file-bookmarks-sidebar",
+          "title": "Workspace File Bookmarks",
           "icon": "media/bookmark-icon.svg"
         }
       ]
     },
     "views": {
-      "file-bookmarks-sidebar": [
+      "workspace-file-bookmarks-sidebar": [
         {
-          "id": "file-bookmarks-view",
+          "id": "workspace-file-bookmarks-view",
           "name": "My Bookmarks",
           "icon": "media/bookmark-icon.svg"
         }
@@ -44,48 +44,48 @@
     },
     "commands": [
       {
-        "command": "file-bookmarks.addBookmark",
+        "command": "workspace-file-bookmarks.addBookmark",
         "title": "Add Bookmark",
-        "category": "File Bookmarks",
+        "category": "Workspace File Bookmarks",
         "icon": "$(bookmark)"
       },
       {
-        "command": "file-bookmarks.addBookmarkFromExplorer",
+        "command": "workspace-file-bookmarks.addBookmarkFromExplorer",
         "title": "Add Bookmark",
-        "category": "File Bookmarks"
+        "category": "Workspace File Bookmarks"
       },
       {
-        "command": "file-bookmarks.removeBookmark",
+        "command": "workspace-file-bookmarks.removeBookmark",
         "title": "Remove Bookmark",
-        "category": "File Bookmarks",
+        "category": "Workspace File Bookmarks",
         "icon": "$(trash)"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "file-bookmarks.addBookmark",
-          "when": "view == file-bookmarks-view",
+          "command": "workspace-file-bookmarks.addBookmark",
+          "when": "view == workspace-file-bookmarks-view",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
-          "command": "file-bookmarks.removeBookmark",
-          "when": "view == file-bookmarks-view && viewItem == bookmarkItem",
+          "command": "workspace-file-bookmarks.removeBookmark",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
           "group": "inline"
         }
       ],
       "editor/title": [
         {
-          "command": "file-bookmarks.addBookmark",
+          "command": "workspace-file-bookmarks.addBookmark",
           "group": "navigation",
           "when": "resourceScheme == file"
         }
       ],
       "explorer/context": [
         {
-          "command": "file-bookmarks.addBookmarkFromExplorer",
+          "command": "workspace-file-bookmarks.addBookmarkFromExplorer",
           "when": "!explorerResourceIsFolder",
           "group": "6_bookmark"
         }

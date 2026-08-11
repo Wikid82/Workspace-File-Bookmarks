@@ -1,4 +1,4 @@
-# File Bookmarks
+# Workspace File Bookmarks
 
 A VS Code extension for bookmarking files across multi-root, multi-repo workspaces so you can jump straight back to the ones you use most.
 

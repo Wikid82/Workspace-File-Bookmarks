@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in File Bookmarks isn't working as expected
+description: Something in Workspace File Bookmarks isn't working as expected
 labels: ["bug"]
 body:
   - type: textarea
@@ -21,36 +21,33 @@ body:
     validations:
       required: true
   - type: input
-    id: version
+    id: extension-version
     attributes:
-      label: File Bookmarks version
-      description: Shown in the app footer, or your Docker image tag
-      placeholder: e.g. 0.2.2
+      label: Extension version
+      description: Shown on the extension's page in the Extensions panel
+      placeholder: e.g. 1.0.0
     validations:
       required: true
-  - type: dropdown
-    id: deployment
+  - type: input
+    id: vscode-version
     attributes:
-      label: Deployment
-      options:
-        - Docker (docker-compose)
-        - Docker (other)
-        - Built from source
-        - Other / not sure
+      label: VS Code version
+      description: Help > About (or `code --version`)
+      placeholder: e.g. 1.125.0
     validations:
       required: true
   - type: input
     id: platform
     attributes:
-      label: Host platform
-      description: OS/architecture, e.g. Raspberry Pi 4 (arm64), Synology NAS, x86 server
+      label: OS/platform
+      description: e.g. macOS 14, Windows 11, Ubuntu 22.04
     validations:
       required: false
   - type: textarea
     id: logs
     attributes:
       label: Relevant logs
-      description: Container logs (`docker logs <container>`) or browser console output, if any
+      description: Output from Help > Toggle Developer Tools > Console, if any
       render: shell
     validations:
       required: false
