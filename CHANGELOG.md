@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.1.0...workspace-file-bookmarks-v1.2.0) (2026-08-11)
+
+
+### Features
+
+* enhance bookmark management with folder support and view modes ([bc2e1ee](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/bc2e1ee2d3c65324433a3141e05940ef40896e79))
+
 ## [1.1.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.0.0...workspace-file-bookmarks-v1.1.0) (2026-08-11)
 
 
