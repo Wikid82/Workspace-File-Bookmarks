@@ -10,6 +10,7 @@
   "postUpdateOptions": ["npmDedupe"],
   "skipInstalls": false,
   "timezone": "America/New_York",
+  "schedule": ["before 7am on monday"],
   "dependencyDashboard": true,
   "dependencyDashboardApproval": true,
   "prConcurrentLimit": 10,
