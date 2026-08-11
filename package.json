@@ -5,19 +5,32 @@
   "publisher": "Wikid82",
   "private": false,
   "version": "1.3.0",
+  "icon": "media/icon.png",
   "categories": [
     "Other"
   ],
   "keywords": [
     "bookmarks",
+    "favorites",
     "multi-root",
+    "multi-repo",
     "workspace",
-    "navigation"
+    "navigation",
+    "quick access",
+    "pinned files"
   ],
+  "galleryBanner": {
+    "color": "#1E293B",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Wikid82/file_bookmarks"
   },
+  "bugs": {
+    "url": "https://github.com/Wikid82/file_bookmarks/issues"
+  },
+  "homepage": "https://github.com/Wikid82/file_bookmarks#readme",
   "engines": {
     "vscode": "^1.132.0"
   },
