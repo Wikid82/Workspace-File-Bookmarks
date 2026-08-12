@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/Wikid82/Workspace-File-Bookmarks#readme",
   "engines": {
-    "vscode": "^1.132.1"
+    "vscode": "^1.133.0"
   },
   "activationEvents": [],
   "main": "./dist/extension.cjs",
