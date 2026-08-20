@@ -21,9 +21,8 @@ echo ""
 # ---------------------------------------------------------------------------
 # npm modules
 # ---------------------------------------------------------------------------
-# Hestia is a single full-stack Next.js app (no separate frontend/backend
-# split), so there's just one npm module today. Kept as an array so a future
-# service split (e.g. a standalone API) is a one-line addition, not a rewrite.
+# Workspace File Bookmarks is a single VS Code extension package, so there's
+# just one npm module today. Kept as an array in case that ever changes.
 
 NPM_MODULES=(
     "$REPO_ROOT"
@@ -39,14 +38,9 @@ for MODULE in "${NPM_MODULES[@]}"; do
 
     
     # Update prod, dev, optional, and peer dependencies to latest.
-    # Exclude typescript: v7 is a from-scratch rewrite (the "tsgo"/native
-    # compiler) with no typescript-eslint support yet, which breaks `npm run
-    # lint` outright. Keep pinned to ^6.0.3 until upstream catches up:
+    # Exclude typescript: staying under v7 until there's a typescript-eslint
+    # release with a v7-compatible API (no ESLint API support until 7.1):
     # https://github.com/typescript-eslint/typescript-eslint/issues/10940
-    # Exclude eslint: v10 changed the rule-context API (e.g. getFilename())
-    # in a way eslint-config-next's bundled eslint-plugin-react doesn't
-    # support yet, which crashes `npm run lint`. Keep pinned to ^9 until
-    # eslint-config-next ships a compatible eslint-plugin-react.
     npx --yes npm-check-updates -u --reject "typescript,@typescript-eslint/*"
 
     # ncu only touches dependency ranges, not engines.vscode, so keep the
