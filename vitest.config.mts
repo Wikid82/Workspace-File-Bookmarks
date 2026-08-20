@@ -6,5 +6,20 @@ export default defineConfig({
         alias: {
             vscode: path.resolve(import.meta.dirname, 'test/vscode-mock.ts')
         }
+    },
+    test: {
+        setupFiles: ['./test/setup.ts'],
+        clearMocks: true,
+        coverage: {
+            provider: 'v8',
+            reporter: ['text', 'lcov'],
+            include: ['extension.ts'],
+            thresholds: {
+                lines: 85,
+                statements: 85,
+                functions: 85,
+                branches: 85
+            }
+        }
     }
 });
