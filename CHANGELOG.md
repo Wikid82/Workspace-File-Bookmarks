@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.2](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.1...workspace-file-bookmarks-v1.5.2) (2026-08-20)
+
+
+### Bug Fixes
+
+* **ci:** allow manual re-run of publish job for existing releases ([ba6719d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/ba6719d230139f9ffd611d057ad70ea25ff3a336))
+
 ## [1.5.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.0...workspace-file-bookmarks-v1.5.1) (2026-08-20)
 
 
