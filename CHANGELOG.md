@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.3](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.2...workspace-file-bookmarks-v1.5.3) (2026-08-20)
+
+
+### Bug Fixes
+
+* **scripts:** use built-in npm audit instead of missing audit:ci script ([f281cab](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/f281cab4a11c7483b741f20fb711808e36d4333b))
+
 ## [1.5.2](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.1...workspace-file-bookmarks-v1.5.2) (2026-08-20)
 
 
