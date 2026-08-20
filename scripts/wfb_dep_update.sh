@@ -46,6 +46,8 @@ for MODULE in "${NPM_MODULES[@]}"; do
     # ncu only touches dependency ranges, not engines.vscode, so keep the
     # minimum supported VS Code version in lockstep with @types/vscode here.
     # vsce refuses to package when engines.vscode is behind @types/vscode.
+    # shellcheck disable=SC2016 -- single-quoted on purpose: the ${...} below
+    # is a JS template literal for node to evaluate, not a shell expansion.
     node -e '
         const fs = require("fs");
         const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
