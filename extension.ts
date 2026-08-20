@@ -7,7 +7,7 @@ const VIEW_MODE_CONTEXT_KEY = 'workspace-file-bookmarks.viewMode';
 
 type ViewMode = 'tree' | 'list';
 
-interface Bookmark {
+export interface Bookmark {
     id: string;
     uri: string;
     label: string;
@@ -17,7 +17,7 @@ interface Bookmark {
     createdAt: number;
 }
 
-interface BookmarkFolder {
+export interface BookmarkFolder {
     id: string;
     name: string;
     createdAt: number;
@@ -53,7 +53,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {}
 
-class BookmarkStore {
+export class BookmarkStore {
     private readonly _onDidChange = new vscode.EventEmitter<void>();
     readonly onDidChange = this._onDidChange.event;
 
@@ -207,7 +207,7 @@ class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 }
 
-function describeBookmark(bookmark: Bookmark, isMultiRoot: boolean, folderName: string | null): string[] {
+export function describeBookmark(bookmark: Bookmark, isMultiRoot: boolean, folderName: string | null): string[] {
     const parts: string[] = [];
     if (folderName) {
         parts.push(folderName);

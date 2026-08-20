@@ -2,9 +2,11 @@
 .github/**
 node_modules/**
 scripts/**
+test/**
 extension.ts
 extension.ts.map
 tsconfig.json
+vitest.config.mts
 .gitignore
 .vscodeignore
 **/*.map
