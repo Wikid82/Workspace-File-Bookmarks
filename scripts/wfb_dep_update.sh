@@ -60,10 +60,8 @@ for MODULE in "${NPM_MODULES[@]}"; do
     npm dedupe --legacy-peer-deps
     npm run build
     npm run lint
-    # Fails on high/critical findings; moderate/low are allowed through (see
-    # audit-ci.json). Add a documented allowlist entry there if a
-    # high/critical finding turns out to be unfixable upstream.
-    npm run audit:ci
+    # Fails on high/critical findings; moderate/low are allowed through.
+    npm audit --audit-level=high
     npm audit fix --legacy-peer-deps || true
     npm outdated || true
 
