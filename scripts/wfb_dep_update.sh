@@ -21,9 +21,8 @@ echo ""
 # ---------------------------------------------------------------------------
 # npm modules
 # ---------------------------------------------------------------------------
-# Hestia is a single full-stack Next.js app (no separate frontend/backend
-# split), so there's just one npm module today. Kept as an array so a future
-# service split (e.g. a standalone API) is a one-line addition, not a rewrite.
+# Workspace File Bookmarks is a single VS Code extension package, so there's
+# just one npm module today. Kept as an array in case that ever changes.
 
 NPM_MODULES=(
     "$REPO_ROOT"
@@ -39,19 +38,16 @@ for MODULE in "${NPM_MODULES[@]}"; do
 
     
     # Update prod, dev, optional, and peer dependencies to latest.
-    # Exclude typescript: v7 is a from-scratch rewrite (the "tsgo"/native
-    # compiler) with no typescript-eslint support yet, which breaks `npm run
-    # lint` outright. Keep pinned to ^6.0.3 until upstream catches up:
+    # Exclude typescript: staying under v7 until there's a typescript-eslint
+    # release with a v7-compatible API (no ESLint API support until 7.1):
     # https://github.com/typescript-eslint/typescript-eslint/issues/10940
-    # Exclude eslint: v10 changed the rule-context API (e.g. getFilename())
-    # in a way eslint-config-next's bundled eslint-plugin-react doesn't
-    # support yet, which crashes `npm run lint`. Keep pinned to ^9 until
-    # eslint-config-next ships a compatible eslint-plugin-react.
     npx --yes npm-check-updates -u --reject "typescript,@typescript-eslint/*"
 
     # ncu only touches dependency ranges, not engines.vscode, so keep the
     # minimum supported VS Code version in lockstep with @types/vscode here.
     # vsce refuses to package when engines.vscode is behind @types/vscode.
+    # shellcheck disable=SC2016 -- single-quoted on purpose: the ${...} below
+    # is a JS template literal for node to evaluate, not a shell expansion.
     node -e '
         const fs = require("fs");
         const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
@@ -66,10 +62,8 @@ for MODULE in "${NPM_MODULES[@]}"; do
     npm dedupe --legacy-peer-deps
     npm run build
     npm run lint
-    # Fails on high/critical findings; moderate/low are allowed through (see
-    # audit-ci.json). Add a documented allowlist entry there if a
-    # high/critical finding turns out to be unfixable upstream.
-    npm run audit:ci
+    # Fails on high/critical findings; moderate/low are allowed through.
+    npm audit --audit-level=high
     npm audit fix --legacy-peer-deps || true
     npm outdated || true
 
