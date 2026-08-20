@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Release tag to publish (e.g. v1.5.1). Only needed to manually
+          (re)run the publish job for a release that already exists — e.g.
+          after a packaging fix, when the tag itself predates the fix.
+          Leave blank for a normal run.
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -29,7 +38,7 @@ jobs:
   # workflow would silently never run.
   publish:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    if: ${{ needs.release-please.outputs.release_created == 'true' || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -37,10 +46,28 @@ jobs:
       VS_MARKETPLACE_TOKEN: ${{ secrets.VS_MARKETPLACE_TOKEN }}
       OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
     steps:
+      # On a normal run, release-please just created the release and handed us its tag/upload_url
+      # directly. On a manual re-run (release already exists, e.g. retrying after a packaging fix),
+      # those outputs are empty, so look the release up by the tag the user supplied instead.
+      - name: Resolve release tag and upload URL
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ needs.release-please.outputs.release_created }}" = "true" ]; then
+            echo "tag=${{ needs.release-please.outputs.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "upload_url=${{ needs.release-please.outputs.upload_url }}" >> "$GITHUB_OUTPUT"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+            UPLOAD_URL=$(gh api "repos/${{ github.repository }}/releases/tags/${TAG}" --jq '.upload_url')
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            echo "upload_url=${UPLOAD_URL}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: ${{ steps.resolve.outputs.tag }}
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -68,10 +95,15 @@ jobs:
       #
       # Lets users grab the .vsix straight from the GitHub Release and "Install from VSIX...",
       # no Marketplace/Open VSX account or token needed for this path.
+      #
+      # Only meaningful right after release-please creates the (draft) release. On a manual
+      # re-run the release is already published and non-draft, so attaching again would just
+      # 422 on the duplicate asset name — skip both steps in that case.
       - name: Attach VSIX to GitHub Release
+        if: ${{ needs.release-please.outputs.release_created == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPLOAD_URL: ${{ needs.release-please.outputs.upload_url }}
+          UPLOAD_URL: ${{ steps.resolve.outputs.upload_url }}
         run: |
           VSIX_FILE=$(ls *.vsix)
           BASE_URL="${UPLOAD_URL%%\{*}"
@@ -82,9 +114,10 @@ jobs:
             "${BASE_URL}?name=${VSIX_FILE}"
 
       - name: Publish GitHub Release
+        if: ${{ needs.release-please.outputs.release_created == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPLOAD_URL: ${{ needs.release-please.outputs.upload_url }}
+          UPLOAD_URL: ${{ steps.resolve.outputs.upload_url }}
         run: |
           RELEASE_ID=$(echo "${UPLOAD_URL}" | sed -E 's#.*/releases/([0-9]+)/.*#\1#')
           gh api -X PATCH "repos/${{ github.repository }}/releases/${RELEASE_ID}" -f draft=false

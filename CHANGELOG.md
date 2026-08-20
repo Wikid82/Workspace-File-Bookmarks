@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.5.2](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.1...workspace-file-bookmarks-v1.5.2) (2026-08-20)
+
+
+### Bug Fixes
+
+* **ci:** allow manual re-run of publish job for existing releases ([ba6719d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/ba6719d230139f9ffd611d057ad70ea25ff3a336))
+
+## [1.5.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.0...workspace-file-bookmarks-v1.5.1) (2026-08-20)
+
+
+### Bug Fixes
+
+* derive pre-release version from live registry state, not local package.json ([92cb0ea](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/92cb0ea51b7bf383b8d1b292a04e78a750dd86ee))
+* update ansi-regex version to 6.3.0 ([253850d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/253850d6faba8cfeb3f00b201c89994d2a51dd4c))
+* update TypeScript and @types/node versions; adjust tsconfig module settings ([7c30fff](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/7c30fff555f1b2659578555f92cfdff7508234b8))
+* update typescript version to ~7.0.0 ([32f6cfb](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/32f6cfbebe8dd4ca11989b02dea992f1967f62a3))
+
 ## [1.5.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.4.3...workspace-file-bookmarks-v1.5.0) (2026-08-11)
 
 

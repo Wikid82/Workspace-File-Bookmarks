@@ -48,6 +48,19 @@ for MODULE in "${NPM_MODULES[@]}"; do
     # support yet, which crashes `npm run lint`. Keep pinned to ^9 until
     # eslint-config-next ships a compatible eslint-plugin-react.
     npx --yes npm-check-updates -u --reject "typescript,@typescript-eslint/*"
+
+    # ncu only touches dependency ranges, not engines.vscode, so keep the
+    # minimum supported VS Code version in lockstep with @types/vscode here.
+    # vsce refuses to package when engines.vscode is behind @types/vscode.
+    node -e '
+        const fs = require("fs");
+        const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+        const typesVersion = pkg.devDependencies?.["@types/vscode"]?.replace(/^[^0-9]*/, "");
+        if (typesVersion && pkg.engines?.vscode) {
+            pkg.engines.vscode = `^${typesVersion}`;
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+        }
+    '
     rm -rf node_modules package-lock.json
     npm install --legacy-peer-deps
     npm dedupe --legacy-peer-deps
