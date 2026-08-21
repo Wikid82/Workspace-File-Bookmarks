@@ -220,12 +220,21 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "pretest:e2e": "npm run build && esbuild test/e2e/*.test.ts --bundle --outdir=out-e2e --platform=node --format=cjs --external:vscode --sourcemap",
+    "test:e2e": "vscode-test"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.1.0"
   },
   "devDependencies": {
+    "@types/mocha": "^10.0.10",
     "@types/node": "^26.2.0",
     "@types/vscode": "^1.134.0",
     "@vitest/coverage-v8": "^4.1.11",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.2",
     "typescript": "~6.0.3",

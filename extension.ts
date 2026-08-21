@@ -23,7 +23,13 @@ export interface BookmarkFolder {
     createdAt: number;
 }
 
-export function activate(context: vscode.ExtensionContext) {
+/** The extension's public API, returned from `activate()` — used by e2e tests to inspect state that isn't reachable through the tree view UI alone. */
+export interface ExtensionApi {
+    store: BookmarkStore;
+    provider: BookmarksTreeProvider;
+}
+
+export function activate(context: vscode.ExtensionContext): ExtensionApi {
     const store = new BookmarkStore(context);
     const provider = new BookmarksTreeProvider(store, context);
 
@@ -50,6 +56,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('workspace-file-bookmarks.setViewModeList', () => provider.setViewMode('list')),
         vscode.commands.registerCommand('workspace-file-bookmarks.setViewModeTree', () => provider.setViewMode('tree'))
     );
+
+    return { store, provider };
 }
 
 export function deactivate() {}

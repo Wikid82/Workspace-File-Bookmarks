@@ -1,6 +1,8 @@
 node_modules/
 dist/
 coverage/
+out-e2e/
+.vscode-test/
 .DS_Store
 *.log
 *.vsix
