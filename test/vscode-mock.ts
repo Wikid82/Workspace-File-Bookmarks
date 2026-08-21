@@ -50,6 +50,26 @@ export class ThemeIcon {
     constructor(public id: string) {}
 }
 
+export class DataTransferItem {
+    constructor(private readonly value: string) {}
+
+    asString(): Promise<string> {
+        return Promise.resolve(this.value);
+    }
+}
+
+export class DataTransfer {
+    private readonly items = new Map<string, DataTransferItem>();
+
+    set(mimeType: string, value: DataTransferItem) {
+        this.items.set(mimeType, value);
+    }
+
+    get(mimeType: string): DataTransferItem | undefined {
+        return this.items.get(mimeType);
+    }
+}
+
 export const window = {
     activeTextEditor: undefined as { document: { uri: Uri } } | undefined,
     showInformationMessage: vi.fn(),
