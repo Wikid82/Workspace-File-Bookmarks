@@ -89,6 +89,66 @@ describe('BookmarksTreeProvider', () => {
         });
     });
 
+    describe('search filter', () => {
+        it('defaults to no filter', () => {
+            const { provider } = newProvider();
+            expect(provider.getSearchFilter()).toBeNull();
+        });
+
+        it('sets and reports the active search filter, updating the context key', () => {
+            const { provider } = newProvider();
+            provider.setSearchFilter('auth');
+            expect(provider.getSearchFilter()).toBe('auth');
+            expect(commands.executeCommand).toHaveBeenCalledWith('setContext', 'workspace-file-bookmarks.searchFilterActive', true);
+        });
+
+        it('treats an empty or blank string as clearing the filter', () => {
+            const { provider } = newProvider();
+            provider.setSearchFilter('auth');
+            provider.setSearchFilter('   ');
+            expect(provider.getSearchFilter()).toBeNull();
+            expect(commands.executeCommand).toHaveBeenCalledWith('setContext', 'workspace-file-bookmarks.searchFilterActive', false);
+        });
+
+        it('narrows list mode by label, relative path, or repo name', () => {
+            const { store, provider } = newProvider();
+            provider.setViewMode('list');
+            store.addBookmark(makeBookmark({ id: 'match', label: 'auth-service.ts' }));
+            store.addBookmark(makeBookmark({ id: 'no-match', label: 'other.ts' }));
+
+            provider.setSearchFilter('auth');
+            const children = provider.getChildren() as BookmarkTreeItem[];
+
+            expect(children.map(c => c.bookmark.id)).toEqual(['match']);
+        });
+
+        it('narrows tree mode, including bookmarks nested in folders', () => {
+            const { store, provider } = newProvider();
+            const folder = store.createFolder('Backend');
+            store.addBookmark(makeBookmark({ id: 'match', folderId: folder.id, label: 'auth-service.ts' }));
+            store.addBookmark(makeBookmark({ id: 'no-match', folderId: folder.id, label: 'other.ts' }));
+
+            provider.setSearchFilter('auth');
+            const [folderNode] = provider.getChildren();
+            const children = provider.getChildren(folderNode) as BookmarkTreeItem[];
+
+            expect(children.map(c => c.bookmark.id)).toEqual(['match']);
+        });
+
+        it('combines with an active tag filter', () => {
+            const { store, provider } = newProvider();
+            store.addBookmark(makeBookmark({ id: 'both', label: 'auth-service.ts', tags: ['review'] }));
+            store.addBookmark(makeBookmark({ id: 'tag-only', label: 'other.ts', tags: ['review'] }));
+            store.addBookmark(makeBookmark({ id: 'search-only', label: 'auth-utils.ts' }));
+
+            provider.setTagFilter('review');
+            provider.setSearchFilter('auth');
+            const children = provider.getChildren() as BookmarkTreeItem[];
+
+            expect(children.map(c => c.bookmark.id)).toEqual(['both']);
+        });
+    });
+
     describe('list mode', () => {
         it('returns all bookmarks newest-first, ignoring folders', () => {
             const { store, provider } = newProvider();

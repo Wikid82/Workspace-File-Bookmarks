@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { BookmarkStore, describeBookmark, type Bookmark } from '../extension';
+import { BookmarkStore, describeBookmark, matchesSearchFilter, type Bookmark } from '../extension';
 import { createFakeContext } from './fakeContext';
 
 function makeBookmark(overrides: Partial<Bookmark> = {}): Bookmark {
@@ -166,5 +166,29 @@ describe('describeBookmark', () => {
     it('omits the tags segment when tags is an empty array', () => {
         const tagged = makeBookmark({ workspaceFolderName: 'repo-a', relativePath: 'src/a.ts', tags: [] });
         expect(describeBookmark(tagged, false, null)).toEqual(['src/a.ts']);
+    });
+});
+
+describe('matchesSearchFilter', () => {
+    const bookmark = makeBookmark({ label: 'auth-service.ts', relativePath: 'src/auth/service.ts', workspaceFolderName: 'backend-repo' });
+
+    it('matches (case-insensitively) against the label', () => {
+        expect(matchesSearchFilter(bookmark, 'AUTH-SERVICE')).toBe(true);
+    });
+
+    it('matches against the relative path', () => {
+        expect(matchesSearchFilter(bookmark, 'src/auth')).toBe(true);
+    });
+
+    it('matches against the workspace folder name', () => {
+        expect(matchesSearchFilter(bookmark, 'backend')).toBe(true);
+    });
+
+    it('returns false when nothing matches', () => {
+        expect(matchesSearchFilter(bookmark, 'frontend')).toBe(false);
+    });
+
+    it('treats a blank query as matching everything', () => {
+        expect(matchesSearchFilter(bookmark, '   ')).toBe(true);
     });
 });
