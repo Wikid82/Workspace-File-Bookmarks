@@ -109,6 +109,18 @@
         "icon": "$(clear-all)"
       },
       {
+        "command": "workspace-file-bookmarks.filterBookmarks",
+        "title": "Filter Bookmarks...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(search)"
+      },
+      {
+        "command": "workspace-file-bookmarks.clearSearchFilter",
+        "title": "Clear Bookmark Filter",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(search-stop)"
+      },
+      {
         "command": "workspace-file-bookmarks.createFolder",
         "title": "New Bookmark Folder",
         "category": "Workspace File Bookmarks",
@@ -162,24 +174,34 @@
           "group": "navigation@2"
         },
         {
+          "command": "workspace-file-bookmarks.filterBookmarks",
+          "when": "view == workspace-file-bookmarks-view && !workspace-file-bookmarks.searchFilterActive",
+          "group": "navigation@3"
+        },
+        {
+          "command": "workspace-file-bookmarks.clearSearchFilter",
+          "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.searchFilterActive",
+          "group": "navigation@3"
+        },
+        {
           "command": "workspace-file-bookmarks.filterByTag",
           "when": "view == workspace-file-bookmarks-view && !workspace-file-bookmarks.tagFilterActive",
-          "group": "navigation@3"
+          "group": "navigation@4"
         },
         {
           "command": "workspace-file-bookmarks.clearTagFilter",
           "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.tagFilterActive",
-          "group": "navigation@3"
+          "group": "navigation@4"
         },
         {
           "command": "workspace-file-bookmarks.setViewModeList",
           "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == tree",
-          "group": "navigation@4"
+          "group": "navigation@5"
         },
         {
           "command": "workspace-file-bookmarks.setViewModeTree",
           "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == list",
-          "group": "navigation@4"
+          "group": "navigation@5"
         }
       ],
       "view/item/context": [

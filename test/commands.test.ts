@@ -7,6 +7,7 @@ import {
     createFolder,
     deleteFolder,
     editBookmarkTags,
+    filterBookmarks,
     filterByTag,
     moveToFolder,
     openAllInFolder,
@@ -19,6 +20,7 @@ import {
 } from '../extension';
 import { createFakeContext } from './fakeContext';
 import { Uri, window, workspace } from './vscode-mock';
+import type { InputBox } from './vscode-mock';
 
 function newStore() {
     return new BookmarkStore(createFakeContext() as any);
@@ -337,6 +339,60 @@ describe('filterByTag', () => {
         await filterByTag(store, provider as any);
 
         expect(provider.setTagFilter).not.toHaveBeenCalled();
+    });
+});
+
+describe('filterBookmarks', () => {
+    function fakeProvider(overrides: { searchFilter?: string | null } = {}) {
+        return {
+            searchFilter: overrides.searchFilter ?? null,
+            getSearchFilter(this: { searchFilter: string | null }) {
+                return this.searchFilter;
+            },
+            setSearchFilter: vi.fn()
+        };
+    }
+
+    it('opens the input box pre-filled with the current filter', () => {
+        const provider = fakeProvider({ searchFilter: 'auth' });
+
+        const inputBox = filterBookmarks(provider as any) as unknown as InputBox;
+
+        expect(inputBox.value).toBe('auth');
+        expect(inputBox.visible).toBe(true);
+    });
+
+    it('updates the filter live as the value changes', () => {
+        const provider = fakeProvider();
+
+        const inputBox = filterBookmarks(provider as any) as unknown as InputBox;
+        inputBox.triggerChangeValue('auth');
+
+        expect(provider.setSearchFilter).toHaveBeenCalledWith('auth');
+    });
+
+    it('keeps the filter and closes on accept', () => {
+        const provider = fakeProvider();
+
+        const inputBox = filterBookmarks(provider as any) as unknown as InputBox;
+        inputBox.triggerChangeValue('auth');
+        inputBox.triggerAccept();
+
+        expect(inputBox.visible).toBe(false);
+        expect(inputBox.disposed).toBe(true);
+        expect(provider.setSearchFilter).toHaveBeenCalledWith('auth');
+        expect(provider.setSearchFilter).not.toHaveBeenCalledWith(null);
+    });
+
+    it('clears the filter when hidden without accepting', () => {
+        const provider = fakeProvider();
+
+        const inputBox = filterBookmarks(provider as any) as unknown as InputBox;
+        inputBox.triggerChangeValue('auth');
+        inputBox.hide();
+
+        expect(inputBox.disposed).toBe(true);
+        expect(provider.setSearchFilter).toHaveBeenCalledWith(null);
     });
 });
 
