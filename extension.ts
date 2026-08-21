@@ -4,6 +4,7 @@ const STORAGE_KEY_BOOKMARKS = 'fileBookmarks.bookmarks';
 const STORAGE_KEY_FOLDERS = 'fileBookmarks.folders';
 const STORAGE_KEY_VIEW_MODE = 'fileBookmarks.viewMode';
 const VIEW_MODE_CONTEXT_KEY = 'workspace-file-bookmarks.viewMode';
+const TAG_FILTER_CONTEXT_KEY = 'workspace-file-bookmarks.tagFilterActive';
 
 type ViewMode = 'tree' | 'list';
 
@@ -16,6 +17,7 @@ export interface Bookmark {
     folderId: string | null;
     createdAt: number;
     order?: number;
+    tags?: string[];
 }
 
 export interface BookmarkFolder {
@@ -82,6 +84,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     });
 
     vscode.commands.executeCommand('setContext', VIEW_MODE_CONTEXT_KEY, provider.getViewMode());
+    vscode.commands.executeCommand('setContext', TAG_FILTER_CONTEXT_KEY, provider.getTagFilter() !== null);
 
     context.subscriptions.push(
         treeView,
@@ -90,6 +93,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkToFolder', (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) => addBookmarksToFolder(store, uri, uris)),
         vscode.commands.registerCommand('workspace-file-bookmarks.removeBookmark', (item: BookmarkTreeItem) => store.removeBookmark(item.bookmark.id)),
         vscode.commands.registerCommand('workspace-file-bookmarks.renameBookmark', (item: BookmarkTreeItem) => renameBookmark(store, item)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.editTags', (item: BookmarkTreeItem) => editBookmarkTags(store, item)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.filterByTag', () => filterByTag(store, provider)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.clearTagFilter', () => provider.setTagFilter(null)),
         vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark)),
         vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () => createFolder(store)),
         vscode.commands.registerCommand('workspace-file-bookmarks.renameFolder', (item: FolderGroupItem) => renameFolder(store, item)),
@@ -138,6 +144,21 @@ export class BookmarkStore {
 
     renameBookmark(id: string, label: string) {
         this.setBookmarks(this.getAllBookmarks().map(b => (b.id === id ? { ...b, label } : b)));
+    }
+
+    setBookmarkTags(id: string, tags: string[]) {
+        this.setBookmarks(this.getAllBookmarks().map(b => (b.id === id ? { ...b, tags } : b)));
+    }
+
+    /** Every distinct tag across all bookmarks, sorted alphabetically. */
+    getAllTags(): string[] {
+        const tags = new Set<string>();
+        for (const bookmark of this.getAllBookmarks()) {
+            for (const tag of bookmark.tags ?? []) {
+                tags.add(tag);
+            }
+        }
+        return [...tags].sort((a, b) => a.localeCompare(b));
     }
 
     /** Assigns sequential `order` values to the bookmarks named in `orderedIds`; bookmarks outside that set are untouched. */
@@ -213,6 +234,7 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>,
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
     private viewMode: ViewMode;
+    private tagFilter: string | null = null;
 
     constructor(private readonly store: BookmarkStore, private readonly context: vscode.ExtensionContext) {
         this.viewMode = this.context.workspaceState.get<ViewMode>(STORAGE_KEY_VIEW_MODE, 'tree');
@@ -230,6 +252,16 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>,
         this._onDidChangeTreeData.fire();
     }
 
+    getTagFilter(): string | null {
+        return this.tagFilter;
+    }
+
+    setTagFilter(tag: string | null) {
+        this.tagFilter = tag;
+        vscode.commands.executeCommand('setContext', TAG_FILTER_CONTEXT_KEY, tag !== null);
+        this._onDidChangeTreeData.fire();
+    }
+
     getTreeItem(element: TreeNode): vscode.TreeItem {
         return element;
     }
@@ -237,7 +269,10 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>,
     getChildren(element?: TreeNode): TreeNode[] {
         const isMultiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
         const folders = this.store.getAllFolders();
-        const bookmarks = this.store.getAllBookmarks();
+        const tagFilter = this.tagFilter;
+        const bookmarks = tagFilter
+            ? this.store.getAllBookmarks().filter(b => (b.tags ?? []).includes(tagFilter))
+            : this.store.getAllBookmarks();
 
         if (this.viewMode === 'list') {
             if (element) {
@@ -313,6 +348,9 @@ export function describeBookmark(bookmark: Bookmark, isMultiRoot: boolean, folde
         parts.push(bookmark.workspaceFolderName);
     }
     parts.push(bookmark.relativePath);
+    if (bookmark.tags && bookmark.tags.length > 0) {
+        parts.push(bookmark.tags.map(tag => `#${tag}`).join(' '));
+    }
     return parts;
 }
 
@@ -400,6 +438,56 @@ export async function renameBookmark(store: BookmarkStore, item: BookmarkTreeIte
     if (label) {
         store.renameBookmark(item.bookmark.id, label.trim());
     }
+}
+
+const ADD_NEW_TAG_PICK = '$(add) Add New Tag...';
+
+/** Opens a multi-select quick-pick of existing tags (pre-checked to the bookmark's current ones), with a fallback input box to type a brand-new tag. */
+export async function editBookmarkTags(store: BookmarkStore, item: BookmarkTreeItem): Promise<void> {
+    const currentTags = new Set(item.bookmark.tags ?? []);
+    const items: vscode.QuickPickItem[] = [
+        ...store.getAllTags().map(tag => ({ label: tag, picked: currentTags.has(tag) })),
+        { label: ADD_NEW_TAG_PICK }
+    ];
+
+    const picked = await vscode.window.showQuickPick(items, {
+        placeHolder: `Tags for "${item.bookmark.label}"`,
+        canPickMany: true
+    });
+    if (!picked) {
+        return;
+    }
+
+    const tags = picked.map(p => p.label).filter(label => label !== ADD_NEW_TAG_PICK);
+
+    if (picked.some(p => p.label === ADD_NEW_TAG_PICK)) {
+        const newTag = await vscode.window.showInputBox({
+            prompt: 'New tag name',
+            validateInput: value => (value.trim().length === 0 ? 'Tag name cannot be empty.' : undefined)
+        });
+        if (newTag) {
+            tags.push(newTag.trim());
+        }
+    }
+
+    store.setBookmarkTags(item.bookmark.id, [...new Set(tags)]);
+}
+
+/** Prompts for a tag to filter the tree by (or to clear the active filter). No-ops with a message if no tags exist yet. */
+export async function filterByTag(store: BookmarkStore, provider: BookmarksTreeProvider): Promise<void> {
+    const tags = store.getAllTags();
+    if (tags.length === 0) {
+        vscode.window.showInformationMessage('No tags yet — tag a bookmark first.');
+        return;
+    }
+
+    const CLEAR_FILTER_PICK = '$(clear-all) Clear Filter';
+    const items = provider.getTagFilter() ? [CLEAR_FILTER_PICK, ...tags] : tags;
+    const picked = await vscode.window.showQuickPick(items, { placeHolder: 'Filter bookmarks by tag' });
+    if (picked === undefined) {
+        return;
+    }
+    provider.setTagFilter(picked === CLEAR_FILTER_PICK ? null : picked);
 }
 
 export async function deleteFolder(store: BookmarkStore, item: FolderGroupItem) {
