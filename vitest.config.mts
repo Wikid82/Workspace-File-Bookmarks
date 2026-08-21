@@ -8,6 +8,7 @@ export default defineConfig({
         }
     },
     test: {
+        exclude: ['**/node_modules/**', 'test/e2e/**', 'out-e2e/**', '.vscode-test/**'],
         setupFiles: ['./test/setup.ts'],
         clearMocks: true,
         coverage: {
