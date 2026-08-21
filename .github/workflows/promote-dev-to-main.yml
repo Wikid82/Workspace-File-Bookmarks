@@ -13,7 +13,7 @@ on:
       reason:
         description: 'Why are you running this manually?'
         required: true
-        default: 'Ad-hoc promotion request'
+        default: 'Feature Release'
       skip_health_check:
         description: 'Skip the CI health check on development?'
         required: false
