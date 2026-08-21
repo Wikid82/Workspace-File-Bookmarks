@@ -5,6 +5,7 @@ const STORAGE_KEY_FOLDERS = 'fileBookmarks.folders';
 const STORAGE_KEY_VIEW_MODE = 'fileBookmarks.viewMode';
 const VIEW_MODE_CONTEXT_KEY = 'workspace-file-bookmarks.viewMode';
 const TAG_FILTER_CONTEXT_KEY = 'workspace-file-bookmarks.tagFilterActive';
+const SEARCH_FILTER_CONTEXT_KEY = 'workspace-file-bookmarks.searchFilterActive';
 
 type ViewMode = 'tree' | 'list';
 
@@ -85,6 +86,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 
     vscode.commands.executeCommand('setContext', VIEW_MODE_CONTEXT_KEY, provider.getViewMode());
     vscode.commands.executeCommand('setContext', TAG_FILTER_CONTEXT_KEY, provider.getTagFilter() !== null);
+    vscode.commands.executeCommand('setContext', SEARCH_FILTER_CONTEXT_KEY, provider.getSearchFilter() !== null);
 
     context.subscriptions.push(
         treeView,
@@ -96,6 +98,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         vscode.commands.registerCommand('workspace-file-bookmarks.editTags', (item: BookmarkTreeItem) => editBookmarkTags(store, item)),
         vscode.commands.registerCommand('workspace-file-bookmarks.filterByTag', () => filterByTag(store, provider)),
         vscode.commands.registerCommand('workspace-file-bookmarks.clearTagFilter', () => provider.setTagFilter(null)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.filterBookmarks', () => filterBookmarks(provider)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.clearSearchFilter', () => provider.setSearchFilter(null)),
         vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark)),
         vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () => createFolder(store)),
         vscode.commands.registerCommand('workspace-file-bookmarks.renameFolder', (item: FolderGroupItem) => renameFolder(store, item)),
@@ -235,6 +239,7 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>,
 
     private viewMode: ViewMode;
     private tagFilter: string | null = null;
+    private searchFilter: string | null = null;
 
     constructor(private readonly store: BookmarkStore, private readonly context: vscode.ExtensionContext) {
         this.viewMode = this.context.workspaceState.get<ViewMode>(STORAGE_KEY_VIEW_MODE, 'tree');
@@ -262,6 +267,16 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>,
         this._onDidChangeTreeData.fire();
     }
 
+    getSearchFilter(): string | null {
+        return this.searchFilter;
+    }
+
+    setSearchFilter(text: string | null) {
+        this.searchFilter = text && text.trim() ? text : null;
+        vscode.commands.executeCommand('setContext', SEARCH_FILTER_CONTEXT_KEY, this.searchFilter !== null);
+        this._onDidChangeTreeData.fire();
+    }
+
     getTreeItem(element: TreeNode): vscode.TreeItem {
         return element;
     }
@@ -270,9 +285,14 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>,
         const isMultiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
         const folders = this.store.getAllFolders();
         const tagFilter = this.tagFilter;
-        const bookmarks = tagFilter
-            ? this.store.getAllBookmarks().filter(b => (b.tags ?? []).includes(tagFilter))
-            : this.store.getAllBookmarks();
+        const searchFilter = this.searchFilter;
+        let bookmarks = this.store.getAllBookmarks();
+        if (tagFilter) {
+            bookmarks = bookmarks.filter(b => (b.tags ?? []).includes(tagFilter));
+        }
+        if (searchFilter) {
+            bookmarks = bookmarks.filter(b => matchesSearchFilter(b, searchFilter));
+        }
 
         if (this.viewMode === 'list') {
             if (element) {
@@ -337,6 +357,17 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>,
             dropBookmark(this.store, payload.id, target, this.viewMode);
         }
     }
+}
+
+/** Case-insensitive substring match against a bookmark's label, relative path, and workspace folder name. */
+export function matchesSearchFilter(bookmark: Bookmark, query: string): boolean {
+    const needle = query.trim().toLowerCase();
+    if (!needle) {
+        return true;
+    }
+    return [bookmark.label, bookmark.relativePath, bookmark.workspaceFolderName].some(field =>
+        field.toLowerCase().includes(needle)
+    );
 }
 
 export function describeBookmark(bookmark: Bookmark, isMultiRoot: boolean, folderName: string | null): string[] {
@@ -488,6 +519,33 @@ export async function filterByTag(store: BookmarkStore, provider: BookmarksTreeP
         return;
     }
     provider.setTagFilter(picked === CLEAR_FILTER_PICK ? null : picked);
+}
+
+/**
+ * Opens a live search box that narrows the tree as the user types (label, relative path, or repo
+ * name). Enter keeps the current filter active and closes the box; Escape (or any other dismissal
+ * without accepting) clears it. Returns the input box so tests can drive it without a real UI.
+ */
+export function filterBookmarks(provider: BookmarksTreeProvider): vscode.InputBox {
+    const inputBox = vscode.window.createInputBox();
+    inputBox.placeholder = 'Filter bookmarks by name, path, or repo';
+    inputBox.value = provider.getSearchFilter() ?? '';
+
+    let accepted = false;
+    inputBox.onDidChangeValue(value => provider.setSearchFilter(value));
+    inputBox.onDidAccept(() => {
+        accepted = true;
+        inputBox.hide();
+    });
+    inputBox.onDidHide(() => {
+        if (!accepted) {
+            provider.setSearchFilter(null);
+        }
+        inputBox.dispose();
+    });
+
+    inputBox.show();
+    return inputBox;
 }
 
 export async function deleteFolder(store: BookmarkStore, item: FolderGroupItem) {

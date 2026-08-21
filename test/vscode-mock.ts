@@ -70,6 +70,45 @@ export class DataTransfer {
     }
 }
 
+export class InputBox {
+    placeholder = '';
+    value = '';
+    disposed = false;
+    visible = false;
+
+    private readonly changeEmitter = new EventEmitter<string>();
+    private readonly acceptEmitter = new EventEmitter<void>();
+    private readonly hideEmitter = new EventEmitter<void>();
+
+    onDidChangeValue = this.changeEmitter.event;
+    onDidAccept = this.acceptEmitter.event;
+    onDidHide = this.hideEmitter.event;
+
+    show() {
+        this.visible = true;
+    }
+
+    hide() {
+        this.visible = false;
+        this.hideEmitter.fire();
+    }
+
+    dispose() {
+        this.disposed = true;
+    }
+
+    /** Test helper: simulates the user typing, updating `value` and firing onDidChangeValue. */
+    triggerChangeValue(value: string) {
+        this.value = value;
+        this.changeEmitter.fire(value);
+    }
+
+    /** Test helper: simulates pressing Enter. */
+    triggerAccept() {
+        this.acceptEmitter.fire();
+    }
+}
+
 export const window = {
     activeTextEditor: undefined as { document: { uri: Uri } } | undefined,
     showInformationMessage: vi.fn(),
@@ -78,7 +117,8 @@ export const window = {
     showInputBox: vi.fn(),
     showQuickPick: vi.fn(),
     showTextDocument: vi.fn(),
-    createTreeView: vi.fn(() => ({ dispose: () => {} }))
+    createTreeView: vi.fn(() => ({ dispose: () => {} })),
+    createInputBox: vi.fn(() => new InputBox())
 };
 
 export const workspace = {

@@ -35,6 +35,7 @@ describe('Workspace File Bookmarks (e2e)', () => {
             store.deleteFolder(folder.id);
         }
         provider.setTagFilter(null);
+        provider.setSearchFilter(null);
     });
 
     it('activates and registers every contributed command', async () => {
@@ -50,6 +51,8 @@ describe('Workspace File Bookmarks (e2e)', () => {
             'workspace-file-bookmarks.editTags',
             'workspace-file-bookmarks.filterByTag',
             'workspace-file-bookmarks.clearTagFilter',
+            'workspace-file-bookmarks.filterBookmarks',
+            'workspace-file-bookmarks.clearSearchFilter',
             'workspace-file-bookmarks.openBookmark',
             'workspace-file-bookmarks.createFolder',
             'workspace-file-bookmarks.renameFolder',
@@ -129,5 +132,34 @@ describe('Workspace File Bookmarks (e2e)', () => {
 
         provider.setTagFilter(null);
         assert.equal((provider.getChildren() as BookmarkTreeItem[]).length, 2);
+    });
+
+    it('narrows the tree via the active search filter, matching label, path, or repo', async () => {
+        const { store, provider } = await getApi();
+        const matching = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+        await vscode.window.showTextDocument(matching);
+        await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+        const other = await vscode.workspace.openTextDocument(fixtureUri('src/sample-b.ts'));
+        await vscode.window.showTextDocument(other);
+        await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+        const [matchingBookmark] = store.getAllBookmarks().filter(b => b.relativePath === 'src/sample-a.ts');
+
+        provider.setSearchFilter('sample-a');
+        const filtered = provider.getChildren() as BookmarkTreeItem[];
+        assert.equal(filtered.length, 1);
+        assert.equal(filtered[0].bookmark.id, matchingBookmark.id);
+
+        provider.setSearchFilter(null);
+        assert.equal((provider.getChildren() as BookmarkTreeItem[]).length, 2);
+    });
+
+    it('opens a live filter input box via the filterBookmarks command', async () => {
+        const { provider } = await getApi();
+
+        const inputBox = await vscode.commands.executeCommand<vscode.InputBox>('workspace-file-bookmarks.filterBookmarks');
+
+        assert.ok(inputBox, 'expected the filterBookmarks command to return the created input box');
+        inputBox.hide();
+        provider.setSearchFilter(null);
     });
 });
