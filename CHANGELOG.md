@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.6.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.3...workspace-file-bookmarks-v1.6.0) (2026-08-21)
+
+
+### Features
+
+* add e2e testing with @vscode/test-cli and wire it into CI ([c8a2079](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/c8a2079239d372017446e6293984ee5b36961b8f))
+* add e2e testing with @vscode/test-cli and wire it into CI ([#60](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/60)) ([fb65195](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/fb651954cf6af5ef3daaf73fa9e8edee342c3938))
+* **ci:** add secret scanning, dependency audit, SBOM and provenance attestation ([481157b](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/481157bd952cf7374838d8019b5ea56d915991d1))
+* rename a bookmark's display label ([b026792](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/b02679219c71b1ae92f029a7edf9c2bdd53402b5)), closes [#37](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/37)
+* reorder bookmarks and folders via drag-and-drop ([b79b759](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/b79b7595a0ac17d9ef653b4b9ec75297316e3f5e)), closes [#38](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/38)
+* reorder bookmarks and folders via drag-and-drop ([#59](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/59)) ([21e51d8](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/21e51d8ffd4927f1c8b62d2ba924296d330efd35))
+
+
+### Bug Fixes
+
+* **scripts:** use indexed loop and clarify shellcheck comment ([7f0ee6d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/7f0ee6dde3a9e7e1791b89bce6013c9285ea7a21))
+
 ## [1.5.3](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.2...workspace-file-bookmarks-v1.5.3) (2026-08-20)
 
 
