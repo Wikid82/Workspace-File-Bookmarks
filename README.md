@@ -1,9 +1,9 @@
 # Workspace File Bookmarks
 
-[![Version](https://vsmarketplacebadges.dev/version/Wikid82.workspace-file-bookmarks.svg?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=Wikid82.workspace-file-bookmarks)
+<p style="text-align: center;">[![Version](https://vsmarketplacebadges.dev/version/Wikid82.workspace-file-bookmarks.svg?label=VS%20Code%20Marketplace)](https://marketplace.visualstudio.com/items?itemName=Wikid82.workspace-file-bookmarks)
 [![Installs](https://vsmarketplacebadges.dev/installs-short/Wikid82.workspace-file-bookmarks.svg)](https://marketplace.visualstudio.com/items?itemName=Wikid82.workspace-file-bookmarks)
 [![Rating](https://vsmarketplacebadges.dev/rating-short/Wikid82.workspace-file-bookmarks.svg)](https://marketplace.visualstudio.com/items?itemName=Wikid82.workspace-file-bookmarks)
-[![License](https://img.shields.io/github/license/Wikid82/file_bookmarks)](LICENSE)
+[![License](https://img.shields.io/github/license/Wikid82/file_bookmarks)](LICENSE)</p>
 
 Working across a multi-root or multi-repo workspace means the files you care about are scattered across folders you keep re-opening. **Workspace File Bookmarks** gives you one sidebar to pin the files you actually use — organized into your own folders, one click away, no matter which repo they live in.
 
