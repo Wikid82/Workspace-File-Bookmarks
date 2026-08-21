@@ -63,6 +63,32 @@ describe('BookmarkStore', () => {
         expect(store.getAllBookmarks()[0].label).toBe('My File');
     });
 
+    it('assigns sequential order to the named bookmarks and leaves others untouched', () => {
+        const store = newStore();
+        store.addBookmark(makeBookmark({ id: 'a', uri: 'file:///repo/src/a.ts' }));
+        store.addBookmark(makeBookmark({ id: 'b', uri: 'file:///repo/src/b.ts' }));
+        store.addBookmark(makeBookmark({ id: 'c', uri: 'file:///repo/src/c.ts' }));
+
+        store.reorderBookmarks(['c', 'a']);
+
+        const byId = new Map(store.getAllBookmarks().map(b => [b.id, b]));
+        expect(byId.get('c')?.order).toBe(0);
+        expect(byId.get('a')?.order).toBe(1);
+        expect(byId.get('b')?.order).toBeUndefined();
+    });
+
+    it('assigns sequential order to the named folders and leaves others untouched', () => {
+        const store = newStore();
+        const first = store.createFolder('First');
+        const second = store.createFolder('Second');
+
+        store.reorderFolders([second.id, first.id]);
+
+        const byId = new Map(store.getAllFolders().map(f => [f.id, f]));
+        expect(byId.get(second.id)?.order).toBe(0);
+        expect(byId.get(first.id)?.order).toBe(1);
+    });
+
     it('creates, renames, and deletes a folder', () => {
         const store = newStore();
         const folder = store.createFolder('Backend');

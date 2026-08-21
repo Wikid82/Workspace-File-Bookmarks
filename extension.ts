@@ -15,13 +15,55 @@ export interface Bookmark {
     workspaceFolderName: string;
     folderId: string | null;
     createdAt: number;
+    order?: number;
 }
 
 export interface BookmarkFolder {
     id: string;
     name: string;
     createdAt: number;
+    order?: number;
 }
+
+export const BOOKMARK_DND_MIME_TYPE = 'application/vnd.code.tree.workspace-file-bookmarks-view';
+
+/** Sorts by explicit `order` when set (ascending), falling back for items without one. Items with an order always sort before items without. */
+export function sortByOrder<T extends { order?: number }>(items: T[], fallbackCompare: (a: T, b: T) => number): T[] {
+    return items.slice().sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) {
+            return a.order - b.order;
+        }
+        if (a.order !== undefined) {
+            return -1;
+        }
+        if (b.order !== undefined) {
+            return 1;
+        }
+        return fallbackCompare(a, b);
+    });
+}
+
+/** Computes the ordered id list for a drag-and-drop scope: `draggedId` removed then reinserted before `beforeId` (or appended when `beforeId` is null). */
+export function computeReorderedIds<T extends { id: string; order?: number }>(
+    scopeItems: T[],
+    draggedId: string,
+    beforeId: string | null,
+    fallbackCompare: (a: T, b: T) => number
+): string[] {
+    const ids = sortByOrder(scopeItems, fallbackCompare)
+        .filter(item => item.id !== draggedId)
+        .map(item => item.id);
+    const insertAt = beforeId ? ids.indexOf(beforeId) : -1;
+    if (insertAt === -1) {
+        ids.push(draggedId);
+    } else {
+        ids.splice(insertAt, 0, draggedId);
+    }
+    return ids;
+}
+
+const bookmarkFallbackCompare = (a: Bookmark, b: Bookmark) => b.createdAt - a.createdAt;
+const folderFallbackCompare = (a: BookmarkFolder, b: BookmarkFolder) => a.name.localeCompare(b.name);
 
 /** The extension's public API, returned from `activate()` — used by e2e tests to inspect state that isn't reachable through the tree view UI alone. */
 export interface ExtensionApi {
@@ -35,7 +77,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
 
     const treeView = vscode.window.createTreeView('workspace-file-bookmarks-view', {
         treeDataProvider: provider,
-        showCollapseAll: true
+        showCollapseAll: true,
+        dragAndDropController: provider
     });
 
     vscode.commands.executeCommand('setContext', VIEW_MODE_CONTEXT_KEY, provider.getViewMode());
@@ -97,6 +140,18 @@ export class BookmarkStore {
         this.setBookmarks(this.getAllBookmarks().map(b => (b.id === id ? { ...b, label } : b)));
     }
 
+    /** Assigns sequential `order` values to the bookmarks named in `orderedIds`; bookmarks outside that set are untouched. */
+    reorderBookmarks(orderedIds: string[]) {
+        const orderById = new Map(orderedIds.map((id, index) => [id, index]));
+        this.setBookmarks(this.getAllBookmarks().map(b => (orderById.has(b.id) ? { ...b, order: orderById.get(b.id) } : b)));
+    }
+
+    /** Assigns sequential `order` values to the folders named in `orderedIds`; folders outside that set are untouched. */
+    reorderFolders(orderedIds: string[]) {
+        const orderById = new Map(orderedIds.map((id, index) => [id, index]));
+        this.setFolders(this.getAllFolders().map(f => (orderById.has(f.id) ? { ...f, order: orderById.get(f.id) } : f)));
+    }
+
     createFolder(name: string): BookmarkFolder {
         const folder: BookmarkFolder = {
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -153,7 +208,7 @@ export class BookmarkTreeItem extends vscode.TreeItem {
 
 type TreeNode = FolderGroupItem | BookmarkTreeItem;
 
-export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode> {
+export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>, vscode.TreeDragAndDropController<TreeNode> {
     private readonly _onDidChangeTreeData = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -189,34 +244,63 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode> 
                 return [];
             }
             const folderById = new Map(folders.map(f => [f.id, f.name]));
-            return bookmarks
-                .slice()
-                .sort((a, b) => b.createdAt - a.createdAt)
-                .map(b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, folderById.get(b.folderId ?? '') ?? null)));
+            return sortByOrder(bookmarks, bookmarkFallbackCompare).map(
+                b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, folderById.get(b.folderId ?? '') ?? null))
+            );
         }
 
         if (element instanceof FolderGroupItem) {
-            return element.bookmarks
-                .slice()
-                .sort((a, b) => b.createdAt - a.createdAt)
-                .map(b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)));
+            return sortByOrder(element.bookmarks, bookmarkFallbackCompare).map(
+                b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null))
+            );
         }
 
         if (element) {
             return [];
         }
 
-        const folderNodes = folders
-            .slice()
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map(folder => new FolderGroupItem(folder, bookmarks.filter(b => b.folderId === folder.id)));
+        const folderNodes = sortByOrder(folders, folderFallbackCompare).map(
+            folder => new FolderGroupItem(folder, bookmarks.filter(b => b.folderId === folder.id))
+        );
 
-        const ungrouped = bookmarks
-            .filter(b => !b.folderId)
-            .sort((a, b) => b.createdAt - a.createdAt)
-            .map(b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)));
+        const ungrouped = sortByOrder(
+            bookmarks.filter(b => !b.folderId),
+            bookmarkFallbackCompare
+        ).map(b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)));
 
         return [...folderNodes, ...ungrouped];
+    }
+
+    get dropMimeTypes(): string[] {
+        return [BOOKMARK_DND_MIME_TYPE];
+    }
+
+    get dragMimeTypes(): string[] {
+        return [BOOKMARK_DND_MIME_TYPE];
+    }
+
+    handleDrag(source: readonly TreeNode[], dataTransfer: vscode.DataTransfer): void {
+        const item = source[0];
+        if (!item) {
+            return;
+        }
+        const payload = item instanceof BookmarkTreeItem
+            ? { kind: 'bookmark' as const, id: item.bookmark.id }
+            : { kind: 'folder' as const, id: item.folder.id };
+        dataTransfer.set(BOOKMARK_DND_MIME_TYPE, new vscode.DataTransferItem(JSON.stringify(payload)));
+    }
+
+    async handleDrop(target: TreeNode | undefined, dataTransfer: vscode.DataTransfer): Promise<void> {
+        const transferItem = dataTransfer.get(BOOKMARK_DND_MIME_TYPE);
+        if (!transferItem) {
+            return;
+        }
+        const payload = JSON.parse(await transferItem.asString()) as { kind: 'bookmark' | 'folder'; id: string };
+        if (payload.kind === 'folder') {
+            dropFolder(this.store, payload.id, target);
+        } else {
+            dropBookmark(this.store, payload.id, target, this.viewMode);
+        }
     }
 }
 
@@ -362,6 +446,56 @@ export async function pickFolder(store: BookmarkStore, placeHolder: string): Pro
     }
 
     return folders.find(f => f.name === picked)?.id ?? undefined;
+}
+
+/** Reorders folders by moving `draggedId` to just before the folder `target` represents (or to the end if dropped elsewhere). */
+export function dropFolder(store: BookmarkStore, draggedId: string, target: TreeNode | undefined) {
+    if (target instanceof BookmarkTreeItem) {
+        return;
+    }
+    const beforeId = target instanceof FolderGroupItem ? target.folder.id : null;
+    if (beforeId === draggedId) {
+        return;
+    }
+    store.reorderFolders(computeReorderedIds(store.getAllFolders(), draggedId, beforeId, folderFallbackCompare));
+}
+
+/**
+ * Handles a bookmark dropped onto `target`: dropping onto a folder moves the bookmark into it
+ * (appended at the end); dropping onto another bookmark reorders within that bookmark's scope,
+ * moving folders too in tree view (list view reorders in place without touching folderId);
+ * dropping on empty space appends to the end of the root/list scope.
+ */
+export function dropBookmark(store: BookmarkStore, draggedId: string, target: TreeNode | undefined, viewMode: ViewMode) {
+    const dragged = store.getAllBookmarks().find(b => b.id === draggedId);
+    if (!dragged) {
+        return;
+    }
+
+    if (target instanceof FolderGroupItem) {
+        if (dragged.folderId !== target.folder.id) {
+            store.moveBookmarkToFolder(draggedId, target.folder.id);
+        }
+        const scope = store.getAllBookmarks().filter(b => b.folderId === target.folder.id);
+        store.reorderBookmarks(computeReorderedIds(scope, draggedId, null, bookmarkFallbackCompare));
+        return;
+    }
+
+    if (target instanceof BookmarkTreeItem && target.bookmark.id === draggedId) {
+        return;
+    }
+
+    const beforeId = target instanceof BookmarkTreeItem ? target.bookmark.id : null;
+    // List view is a flat scope: reorder in place without ever reassigning folderId.
+    const destinationFolderId =
+        viewMode === 'list' ? dragged.folderId : target instanceof BookmarkTreeItem ? target.bookmark.folderId : null;
+
+    if (destinationFolderId !== dragged.folderId) {
+        store.moveBookmarkToFolder(draggedId, destinationFolderId);
+    }
+
+    const scope = store.getAllBookmarks().filter(b => (viewMode === 'list' ? true : b.folderId === destinationFolderId));
+    store.reorderBookmarks(computeReorderedIds(scope, draggedId, beforeId, bookmarkFallbackCompare));
 }
 
 export async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
