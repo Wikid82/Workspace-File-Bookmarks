@@ -42,6 +42,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     env:
       VS_MARKETPLACE_TOKEN: ${{ secrets.VS_MARKETPLACE_TOKEN }}
       OPEN_VSX_TOKEN: ${{ secrets.OPEN_VSX_TOKEN }}
@@ -84,6 +86,19 @@ jobs:
       - name: Package extension
         run: npx @vscode/vsce package
 
+      # CycloneDX SBOM covering every prod dependency in the packaged .vsix, for
+      # downstream vulnerability/license auditing without re-resolving the tree.
+      - name: Generate SBOM
+        run: npx @cyclonedx/cyclonedx-npm --ignore-npm-errors --output-file sbom.cdx.json
+
+      # Cryptographically binds the .vsix and its SBOM to this workflow run and
+      # commit (Sigstore-backed, keyless — no secrets to manage). Verify with:
+      #   gh attestation verify <file> -R ${{ github.repository }}
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@8beda2b7ed98355c0e97c0a63bec38ae472e66c4 # v4
+        with:
+          subject-path: '*.vsix, sbom.cdx.json'
+
       # release-please-config.json sets draft:true for this package specifically so this step can
       # run at all: GitHub's immutable-releases feature locks a release the instant it's published,
       # so assets can only be attached while it's still a draft. We un-draft it in the next step,
@@ -99,19 +114,20 @@ jobs:
       # Only meaningful right after release-please creates the (draft) release. On a manual
       # re-run the release is already published and non-draft, so attaching again would just
       # 422 on the duplicate asset name — skip both steps in that case.
-      - name: Attach VSIX to GitHub Release
+      - name: Attach VSIX and SBOM to GitHub Release
         if: ${{ needs.release-please.outputs.release_created == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPLOAD_URL: ${{ steps.resolve.outputs.upload_url }}
         run: |
-          VSIX_FILE=$(ls *.vsix)
           BASE_URL="${UPLOAD_URL%%\{*}"
-          curl -sSf -X POST \
-            -H "Authorization: token ${GH_TOKEN}" \
-            -H "Content-Type: application/octet-stream" \
-            --data-binary @"${VSIX_FILE}" \
-            "${BASE_URL}?name=${VSIX_FILE}"
+          for ASSET in *.vsix sbom.cdx.json; do
+            curl -sSf -X POST \
+              -H "Authorization: token ${GH_TOKEN}" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary @"${ASSET}" \
+              "${BASE_URL}?name=${ASSET}"
+          done
 
       - name: Publish GitHub Release
         if: ${{ needs.release-please.outputs.release_created == 'true' }}
