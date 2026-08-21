@@ -27,13 +27,14 @@ function fixtureUri(relativePath: string): vscode.Uri {
 
 describe('Workspace File Bookmarks (e2e)', () => {
     beforeEach(async () => {
-        const { store } = await getApi();
+        const { store, provider } = await getApi();
         for (const bookmark of store.getAllBookmarks()) {
             store.removeBookmark(bookmark.id);
         }
         for (const folder of store.getAllFolders()) {
             store.deleteFolder(folder.id);
         }
+        provider.setTagFilter(null);
     });
 
     it('activates and registers every contributed command', async () => {
@@ -46,6 +47,9 @@ describe('Workspace File Bookmarks (e2e)', () => {
             'workspace-file-bookmarks.addBookmarkToFolder',
             'workspace-file-bookmarks.removeBookmark',
             'workspace-file-bookmarks.renameBookmark',
+            'workspace-file-bookmarks.editTags',
+            'workspace-file-bookmarks.filterByTag',
+            'workspace-file-bookmarks.clearTagFilter',
             'workspace-file-bookmarks.openBookmark',
             'workspace-file-bookmarks.createFolder',
             'workspace-file-bookmarks.renameFolder',
@@ -102,5 +106,28 @@ describe('Workspace File Bookmarks (e2e)', () => {
         const folderChildren = provider.getChildren(folderNode) as BookmarkTreeItem[];
         assert.equal(folderChildren.length, 1);
         assert.equal(folderChildren[0].bookmark.relativePath, 'src/sample-b.ts');
+    });
+
+    it('shows tags in the tree description and narrows the tree via the active tag filter', async () => {
+        const { store, provider } = await getApi();
+        const tagged = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+        await vscode.window.showTextDocument(tagged);
+        await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+        const untagged = await vscode.workspace.openTextDocument(fixtureUri('src/sample-b.ts'));
+        await vscode.window.showTextDocument(untagged);
+        await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+        const [taggedBookmark] = store.getAllBookmarks().filter(b => b.relativePath === 'src/sample-a.ts');
+        store.setBookmarkTags(taggedBookmark.id, ['auth']);
+
+        const taggedItem = (provider.getChildren() as BookmarkTreeItem[]).find(c => c.bookmark.id === taggedBookmark.id);
+        assert.ok(taggedItem?.description?.toString().includes('#auth'));
+
+        provider.setTagFilter('auth');
+        const filtered = provider.getChildren() as BookmarkTreeItem[];
+        assert.equal(filtered.length, 1);
+        assert.equal(filtered[0].bookmark.id, taggedBookmark.id);
+
+        provider.setTagFilter(null);
+        assert.equal((provider.getChildren() as BookmarkTreeItem[]).length, 2);
     });
 });

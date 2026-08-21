@@ -6,6 +6,8 @@ import {
     addBookmarksToFolder,
     createFolder,
     deleteFolder,
+    editBookmarkTags,
+    filterByTag,
     moveToFolder,
     openAllInFolder,
     openBookmark,
@@ -206,6 +208,135 @@ describe('renameBookmark', () => {
         await renameBookmark(store, { bookmark } as any);
 
         expect(store.getAllBookmarks()[0].label).toBe('a.ts');
+    });
+});
+
+describe('editBookmarkTags', () => {
+    it('sets tags from the picked items, pre-checking the bookmark\'s current tags', async () => {
+        const store = newStore();
+        const bookmark = makeBookmark({ tags: ['auth'] });
+        store.addBookmark(bookmark);
+        store.addBookmark(makeBookmark({ id: 'other', uri: 'file:///repo/src/other.ts', tags: ['review'] }));
+        window.showQuickPick.mockResolvedValue([{ label: 'auth', picked: true }, { label: 'review' }]);
+
+        await editBookmarkTags(store, { bookmark } as any);
+
+        expect(store.getAllBookmarks().find(b => b.id === bookmark.id)?.tags).toEqual(['auth', 'review']);
+        const items = window.showQuickPick.mock.calls[0][0];
+        expect(items).toEqual([
+            { label: 'auth', picked: true },
+            { label: 'review', picked: false },
+            { label: '$(add) Add New Tag...' }
+        ]);
+        expect(window.showQuickPick.mock.calls[0][1]).toMatchObject({ canPickMany: true });
+    });
+
+    it('does nothing when the quick-pick is cancelled', async () => {
+        const store = newStore();
+        const bookmark = makeBookmark({ tags: ['auth'] });
+        store.addBookmark(bookmark);
+        window.showQuickPick.mockResolvedValue(undefined);
+
+        await editBookmarkTags(store, { bookmark } as any);
+
+        expect(store.getAllBookmarks()[0].tags).toEqual(['auth']);
+    });
+
+    it('prompts for and adds a new tag when "Add New Tag..." is picked', async () => {
+        const store = newStore();
+        const bookmark = makeBookmark({ tags: [] });
+        store.addBookmark(bookmark);
+        window.showQuickPick.mockResolvedValue([{ label: '$(add) Add New Tag...' }]);
+        window.showInputBox.mockResolvedValue('  urgent  ');
+
+        await editBookmarkTags(store, { bookmark } as any);
+
+        expect(store.getAllBookmarks()[0].tags).toEqual(['urgent']);
+        const validateInput = window.showInputBox.mock.calls[0][0].validateInput;
+        expect(validateInput('   ')).toMatch(/cannot be empty/);
+        expect(validateInput('urgent')).toBeUndefined();
+    });
+
+    it('drops "Add New Tag..." from the result when its input box is cancelled', async () => {
+        const store = newStore();
+        const bookmark = makeBookmark({ tags: [] });
+        store.addBookmark(bookmark);
+        window.showQuickPick.mockResolvedValue([{ label: 'auth' }, { label: '$(add) Add New Tag...' }]);
+        window.showInputBox.mockResolvedValue(undefined);
+
+        await editBookmarkTags(store, { bookmark } as any);
+
+        expect(store.getAllBookmarks()[0].tags).toEqual(['auth']);
+    });
+
+    it('deduplicates tags picked more than once', async () => {
+        const store = newStore();
+        const bookmark = makeBookmark({ tags: ['auth'] });
+        store.addBookmark(bookmark);
+        window.showQuickPick.mockResolvedValue([{ label: 'auth' }, { label: '$(add) Add New Tag...' }]);
+        window.showInputBox.mockResolvedValue('auth');
+
+        await editBookmarkTags(store, { bookmark } as any);
+
+        expect(store.getAllBookmarks()[0].tags).toEqual(['auth']);
+    });
+});
+
+describe('filterByTag', () => {
+    function fakeProvider(overrides: { tagFilter?: string | null } = {}) {
+        return {
+            tagFilter: overrides.tagFilter ?? null,
+            getTagFilter(this: { tagFilter: string | null }) {
+                return this.tagFilter;
+            },
+            setTagFilter: vi.fn()
+        };
+    }
+
+    it('shows an info message and skips the quick-pick when there are no tags yet', async () => {
+        const store = newStore();
+        const provider = fakeProvider();
+
+        await filterByTag(store, provider as any);
+
+        expect(window.showInformationMessage).toHaveBeenCalledOnce();
+        expect(window.showQuickPick).not.toHaveBeenCalled();
+        expect(provider.setTagFilter).not.toHaveBeenCalled();
+    });
+
+    it('sets the tag filter to the picked tag', async () => {
+        const store = newStore();
+        store.addBookmark(makeBookmark({ tags: ['auth'] }));
+        const provider = fakeProvider();
+        window.showQuickPick.mockResolvedValue('auth');
+
+        await filterByTag(store, provider as any);
+
+        expect(provider.setTagFilter).toHaveBeenCalledWith('auth');
+        expect(window.showQuickPick.mock.calls[0][0]).toEqual(['auth']);
+    });
+
+    it('offers a "Clear Filter" pick when a filter is already active', async () => {
+        const store = newStore();
+        store.addBookmark(makeBookmark({ tags: ['auth'] }));
+        const provider = fakeProvider({ tagFilter: 'auth' });
+        window.showQuickPick.mockResolvedValue('$(clear-all) Clear Filter');
+
+        await filterByTag(store, provider as any);
+
+        expect(window.showQuickPick.mock.calls[0][0]).toEqual(['$(clear-all) Clear Filter', 'auth']);
+        expect(provider.setTagFilter).toHaveBeenCalledWith(null);
+    });
+
+    it('does nothing when the quick-pick is cancelled', async () => {
+        const store = newStore();
+        store.addBookmark(makeBookmark({ tags: ['auth'] }));
+        const provider = fakeProvider();
+        window.showQuickPick.mockResolvedValue(undefined);
+
+        await filterByTag(store, provider as any);
+
+        expect(provider.setTagFilter).not.toHaveBeenCalled();
     });
 });
 

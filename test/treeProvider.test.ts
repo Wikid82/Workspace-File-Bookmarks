@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BookmarkStore, BookmarksTreeProvider, FolderGroupItem, BookmarkTreeItem, type Bookmark } from '../extension';
 import { createFakeContext } from './fakeContext';
-import { workspace, Uri } from './vscode-mock';
+import { commands, workspace, Uri } from './vscode-mock';
 
 function makeBookmark(overrides: Partial<Bookmark> = {}): Bookmark {
     const id = overrides.id ?? 'id-1';
@@ -40,6 +40,53 @@ describe('BookmarksTreeProvider', () => {
         const { provider } = newProvider();
         const item = new BookmarkTreeItem(makeBookmark(), ['src/a.ts']);
         expect(provider.getTreeItem(item)).toBe(item);
+    });
+
+    describe('tag filter', () => {
+        it('defaults to no filter', () => {
+            const { provider } = newProvider();
+            expect(provider.getTagFilter()).toBeNull();
+        });
+
+        it('sets and reports the active tag filter, updating the context key', () => {
+            const { provider } = newProvider();
+            provider.setTagFilter('auth');
+            expect(provider.getTagFilter()).toBe('auth');
+            expect(commands.executeCommand).toHaveBeenCalledWith('setContext', 'workspace-file-bookmarks.tagFilterActive', true);
+        });
+
+        it('clears the filter and updates the context key', () => {
+            const { provider } = newProvider();
+            provider.setTagFilter('auth');
+            provider.setTagFilter(null);
+            expect(provider.getTagFilter()).toBeNull();
+            expect(commands.executeCommand).toHaveBeenCalledWith('setContext', 'workspace-file-bookmarks.tagFilterActive', false);
+        });
+
+        it('narrows list mode to bookmarks carrying the active tag', () => {
+            const { store, provider } = newProvider();
+            provider.setViewMode('list');
+            store.addBookmark(makeBookmark({ id: 'tagged', tags: ['auth'] }));
+            store.addBookmark(makeBookmark({ id: 'untagged' }));
+
+            provider.setTagFilter('auth');
+            const children = provider.getChildren() as BookmarkTreeItem[];
+
+            expect(children.map(c => c.bookmark.id)).toEqual(['tagged']);
+        });
+
+        it('narrows tree mode, including bookmarks nested in folders', () => {
+            const { store, provider } = newProvider();
+            const folder = store.createFolder('Backend');
+            store.addBookmark(makeBookmark({ id: 'tagged', folderId: folder.id, tags: ['auth'] }));
+            store.addBookmark(makeBookmark({ id: 'untagged', folderId: folder.id }));
+
+            provider.setTagFilter('auth');
+            const [folderNode] = provider.getChildren();
+            const children = provider.getChildren(folderNode) as BookmarkTreeItem[];
+
+            expect(children.map(c => c.bookmark.id)).toEqual(['tagged']);
+        });
     });
 
     describe('list mode', () => {

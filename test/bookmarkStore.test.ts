@@ -63,6 +63,22 @@ describe('BookmarkStore', () => {
         expect(store.getAllBookmarks()[0].label).toBe('My File');
     });
 
+    it('sets tags on a bookmark', () => {
+        const store = newStore();
+        store.addBookmark(makeBookmark({ id: 'a' }));
+        store.setBookmarkTags('a', ['auth', 'review']);
+        expect(store.getAllBookmarks()[0].tags).toEqual(['auth', 'review']);
+    });
+
+    it('collects every distinct tag across bookmarks, sorted alphabetically', () => {
+        const store = newStore();
+        store.addBookmark(makeBookmark({ id: 'a', uri: 'file:///repo/src/a.ts', tags: ['review', 'auth'] }));
+        store.addBookmark(makeBookmark({ id: 'b', uri: 'file:///repo/src/b.ts', tags: ['auth', 'todo'] }));
+        store.addBookmark(makeBookmark({ id: 'c', uri: 'file:///repo/src/c.ts' }));
+
+        expect(store.getAllTags()).toEqual(['auth', 'review', 'todo']);
+    });
+
     it('assigns sequential order to the named bookmarks and leaves others untouched', () => {
         const store = newStore();
         store.addBookmark(makeBookmark({ id: 'a', uri: 'file:///repo/src/a.ts' }));
@@ -140,5 +156,15 @@ describe('describeBookmark', () => {
 
     it('shows folder name and workspace folder name together', () => {
         expect(describeBookmark(bookmark, true, 'Backend')).toEqual(['Backend', 'repo-a', 'src/a.ts']);
+    });
+
+    it('appends hashtag-prefixed tags when present', () => {
+        const tagged = makeBookmark({ workspaceFolderName: 'repo-a', relativePath: 'src/a.ts', tags: ['auth', 'review'] });
+        expect(describeBookmark(tagged, false, null)).toEqual(['src/a.ts', '#auth #review']);
+    });
+
+    it('omits the tags segment when tags is an empty array', () => {
+        const tagged = makeBookmark({ workspaceFolderName: 'repo-a', relativePath: 'src/a.ts', tags: [] });
+        expect(describeBookmark(tagged, false, null)).toEqual(['src/a.ts']);
     });
 });
