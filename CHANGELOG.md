@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.7.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.6.0...workspace-file-bookmarks-v1.7.0) (2026-08-21)
+
+
+### Features
+
+* tag bookmarks and filter/group by tag ([aa4e0be](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/aa4e0beb2f7662e43b7f1a39b4c6cf8076a4d314))
+* tag bookmarks and filter/group by tag ([#64](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/64)) ([ceafd2d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/ceafd2d49d3d36297436cc90c0ac9fd760fcaa03))
+
+
+### Bug Fixes
+
+* replace retired shields.io VS Marketplace badges ([e791cf6](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/e791cf6de796810b590502155c06457ed97b839a))
+
 ## [1.6.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.5.3...workspace-file-bookmarks-v1.6.0) (2026-08-21)
 
 
