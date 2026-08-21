@@ -7,7 +7,7 @@ const VIEW_MODE_CONTEXT_KEY = 'workspace-file-bookmarks.viewMode';
 
 type ViewMode = 'tree' | 'list';
 
-interface Bookmark {
+export interface Bookmark {
     id: string;
     uri: string;
     label: string;
@@ -17,7 +17,7 @@ interface Bookmark {
     createdAt: number;
 }
 
-interface BookmarkFolder {
+export interface BookmarkFolder {
     id: string;
     name: string;
     createdAt: number;
@@ -40,6 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkFromExplorer', (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) => addBookmarksForUris(store, uri, uris)),
         vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkToFolder', (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) => addBookmarksToFolder(store, uri, uris)),
         vscode.commands.registerCommand('workspace-file-bookmarks.removeBookmark', (item: BookmarkTreeItem) => store.removeBookmark(item.bookmark.id)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.renameBookmark', (item: BookmarkTreeItem) => renameBookmark(store, item)),
         vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark)),
         vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () => createFolder(store)),
         vscode.commands.registerCommand('workspace-file-bookmarks.renameFolder', (item: FolderGroupItem) => renameFolder(store, item)),
@@ -53,7 +54,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {}
 
-class BookmarkStore {
+export class BookmarkStore {
     private readonly _onDidChange = new vscode.EventEmitter<void>();
     readonly onDidChange = this._onDidChange.event;
 
@@ -82,6 +83,10 @@ class BookmarkStore {
 
     moveBookmarkToFolder(id: string, folderId: string | null) {
         this.setBookmarks(this.getAllBookmarks().map(b => (b.id === id ? { ...b, folderId } : b)));
+    }
+
+    renameBookmark(id: string, label: string) {
+        this.setBookmarks(this.getAllBookmarks().map(b => (b.id === id ? { ...b, label } : b)));
     }
 
     createFolder(name: string): BookmarkFolder {
@@ -114,7 +119,7 @@ class BookmarkStore {
     }
 }
 
-class FolderGroupItem extends vscode.TreeItem {
+export class FolderGroupItem extends vscode.TreeItem {
     constructor(public readonly folder: BookmarkFolder, public readonly bookmarks: Bookmark[]) {
         super(folder.name, vscode.TreeItemCollapsibleState.Expanded);
         this.contextValue = 'bookmarkFolder';
@@ -123,7 +128,7 @@ class FolderGroupItem extends vscode.TreeItem {
     }
 }
 
-class BookmarkTreeItem extends vscode.TreeItem {
+export class BookmarkTreeItem extends vscode.TreeItem {
     constructor(public readonly bookmark: Bookmark, descriptionParts: string[]) {
         super(bookmark.label, vscode.TreeItemCollapsibleState.None);
         this.description = descriptionParts.join(' • ');
@@ -140,7 +145,7 @@ class BookmarkTreeItem extends vscode.TreeItem {
 
 type TreeNode = FolderGroupItem | BookmarkTreeItem;
 
-class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode> {
+export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     private readonly _onDidChangeTreeData = new vscode.EventEmitter<void>();
     readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
@@ -207,7 +212,7 @@ class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 }
 
-function describeBookmark(bookmark: Bookmark, isMultiRoot: boolean, folderName: string | null): string[] {
+export function describeBookmark(bookmark: Bookmark, isMultiRoot: boolean, folderName: string | null): string[] {
     const parts: string[] = [];
     if (folderName) {
         parts.push(folderName);
@@ -219,7 +224,7 @@ function describeBookmark(bookmark: Bookmark, isMultiRoot: boolean, folderName: 
     return parts;
 }
 
-function toBookmark(uri: vscode.Uri): Bookmark {
+export function toBookmark(uri: vscode.Uri): Bookmark {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
     const workspaceFolderName = workspaceFolder?.name ?? 'Workspace';
     const relativePath = workspaceFolder ? vscode.workspace.asRelativePath(uri, false) : uri.fsPath;
@@ -236,7 +241,7 @@ function toBookmark(uri: vscode.Uri): Bookmark {
     };
 }
 
-function addActiveFileBookmark(store: BookmarkStore) {
+export function addActiveFileBookmark(store: BookmarkStore) {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showWarningMessage('Open a file to bookmark it.');
@@ -245,14 +250,14 @@ function addActiveFileBookmark(store: BookmarkStore) {
     store.addBookmark(toBookmark(editor.document.uri));
 }
 
-function addBookmarksForUris(store: BookmarkStore, uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) {
+export function addBookmarksForUris(store: BookmarkStore, uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) {
     const targets = uris && uris.length > 0 ? uris : uri ? [uri] : [];
     for (const target of targets) {
         store.addBookmark(toBookmark(target));
     }
 }
 
-async function openBookmark(bookmark: Bookmark) {
+export async function openBookmark(bookmark: Bookmark) {
     try {
         const uri = vscode.Uri.parse(bookmark.uri);
         const document = await vscode.workspace.openTextDocument(uri);
@@ -262,7 +267,7 @@ async function openBookmark(bookmark: Bookmark) {
     }
 }
 
-async function openAllInFolder(store: BookmarkStore, item: FolderGroupItem) {
+export async function openAllInFolder(store: BookmarkStore, item: FolderGroupItem) {
     if (item.bookmarks.length === 0) {
         vscode.window.showInformationMessage(`"${item.folder.name}" has no bookmarks.`);
         return;
@@ -272,7 +277,7 @@ async function openAllInFolder(store: BookmarkStore, item: FolderGroupItem) {
     }
 }
 
-async function createFolder(store: BookmarkStore) {
+export async function createFolder(store: BookmarkStore) {
     const name = await vscode.window.showInputBox({
         prompt: 'New bookmark folder name',
         placeHolder: 'e.g. Backend, In Review, TODO',
@@ -283,7 +288,7 @@ async function createFolder(store: BookmarkStore) {
     }
 }
 
-async function renameFolder(store: BookmarkStore, item: FolderGroupItem) {
+export async function renameFolder(store: BookmarkStore, item: FolderGroupItem) {
     const name = await vscode.window.showInputBox({
         prompt: 'Rename bookmark folder',
         value: item.folder.name,
@@ -294,7 +299,18 @@ async function renameFolder(store: BookmarkStore, item: FolderGroupItem) {
     }
 }
 
-async function deleteFolder(store: BookmarkStore, item: FolderGroupItem) {
+export async function renameBookmark(store: BookmarkStore, item: BookmarkTreeItem) {
+    const label = await vscode.window.showInputBox({
+        prompt: 'Rename bookmark',
+        value: item.bookmark.label,
+        validateInput: value => (value.trim().length === 0 ? 'Bookmark label cannot be empty.' : undefined)
+    });
+    if (label) {
+        store.renameBookmark(item.bookmark.id, label.trim());
+    }
+}
+
+export async function deleteFolder(store: BookmarkStore, item: FolderGroupItem) {
     if (item.bookmarks.length > 0) {
         const confirm = await vscode.window.showWarningMessage(
             `Delete folder "${item.folder.name}"? ${item.bookmarks.length} bookmark(s) will move to the root list.`,
@@ -312,7 +328,7 @@ const NEW_FOLDER_PICK = '$(new-folder) New Folder...';
 const NO_FOLDER_PICK = '$(circle-slash) No Folder (root)';
 
 /** Prompts the user to choose a bookmark folder. Returns `undefined` if cancelled, `null` for root. */
-async function pickFolder(store: BookmarkStore, placeHolder: string): Promise<string | null | undefined> {
+export async function pickFolder(store: BookmarkStore, placeHolder: string): Promise<string | null | undefined> {
     const folders = store.getAllFolders();
     const picked = await vscode.window.showQuickPick(
         [NO_FOLDER_PICK, ...folders.map(f => f.name), NEW_FOLDER_PICK],
@@ -340,7 +356,7 @@ async function pickFolder(store: BookmarkStore, placeHolder: string): Promise<st
     return folders.find(f => f.name === picked)?.id ?? undefined;
 }
 
-async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
+export async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
     const folderId = await pickFolder(store, `Move "${item.bookmark.label}" to...`);
     if (folderId === undefined) {
         return;
@@ -348,7 +364,7 @@ async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
     store.moveBookmarkToFolder(item.bookmark.id, folderId);
 }
 
-async function addBookmarksToFolder(store: BookmarkStore, uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) {
+export async function addBookmarksToFolder(store: BookmarkStore, uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) {
     const targets = uris && uris.length > 0 ? uris : uri ? [uri] : [];
     if (targets.length === 0) {
         return;

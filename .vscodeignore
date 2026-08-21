@@ -2,9 +2,13 @@
 .github/**
 node_modules/**
 scripts/**
+test/**
 extension.ts
 extension.ts.map
 tsconfig.json
+vitest.config.mts
+codecov.yml
+CLAUDE.md
 .gitignore
 .vscodeignore
 **/*.map

@@ -86,6 +86,11 @@
         "icon": "$(trash)"
       },
       {
+        "command": "workspace-file-bookmarks.renameBookmark",
+        "title": "Rename Bookmark",
+        "category": "Workspace File Bookmarks"
+      },
+      {
         "command": "workspace-file-bookmarks.createFolder",
         "title": "New Bookmark Folder",
         "category": "Workspace File Bookmarks",
@@ -156,6 +161,11 @@
           "group": "inline"
         },
         {
+          "command": "workspace-file-bookmarks.renameBookmark",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "1_modification"
+        },
+        {
           "command": "workspace-file-bookmarks.moveToFolder",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
           "group": "1_modification"
@@ -208,13 +218,17 @@
     "vscode:prepublish": "npm run build",
     "package": "bash scripts/rebuild.sh",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
     "@types/vscode": "^1.134.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.2",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
   }
 }
