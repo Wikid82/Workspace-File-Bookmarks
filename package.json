@@ -91,6 +91,24 @@
         "category": "Workspace File Bookmarks"
       },
       {
+        "command": "workspace-file-bookmarks.editTags",
+        "title": "Edit Tags...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(tag)"
+      },
+      {
+        "command": "workspace-file-bookmarks.filterByTag",
+        "title": "Filter by Tag...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "workspace-file-bookmarks.clearTagFilter",
+        "title": "Clear Tag Filter",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(clear-all)"
+      },
+      {
         "command": "workspace-file-bookmarks.createFolder",
         "title": "New Bookmark Folder",
         "category": "Workspace File Bookmarks",
@@ -144,14 +162,24 @@
           "group": "navigation@2"
         },
         {
+          "command": "workspace-file-bookmarks.filterByTag",
+          "when": "view == workspace-file-bookmarks-view && !workspace-file-bookmarks.tagFilterActive",
+          "group": "navigation@3"
+        },
+        {
+          "command": "workspace-file-bookmarks.clearTagFilter",
+          "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.tagFilterActive",
+          "group": "navigation@3"
+        },
+        {
           "command": "workspace-file-bookmarks.setViewModeList",
           "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == tree",
-          "group": "navigation@3"
+          "group": "navigation@4"
         },
         {
           "command": "workspace-file-bookmarks.setViewModeTree",
           "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == list",
-          "group": "navigation@3"
+          "group": "navigation@4"
         }
       ],
       "view/item/context": [
@@ -162,6 +190,11 @@
         },
         {
           "command": "workspace-file-bookmarks.renameBookmark",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "1_modification"
+        },
+        {
+          "command": "workspace-file-bookmarks.editTags",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
           "group": "1_modification"
         },
