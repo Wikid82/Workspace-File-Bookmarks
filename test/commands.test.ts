@@ -10,6 +10,7 @@ import {
     openAllInFolder,
     openBookmark,
     pickFolder,
+    renameBookmark,
     renameFolder,
     type Bookmark,
     type BookmarkFolder
@@ -177,6 +178,34 @@ describe('renameFolder', () => {
         await renameFolder(store, { folder } as any);
 
         expect(store.getAllFolders()[0].name).toBe('Backend');
+    });
+});
+
+describe('renameBookmark', () => {
+    it('renames the bookmark from trimmed input', async () => {
+        const store = newStore();
+        const bookmark = makeBookmark();
+        store.addBookmark(bookmark);
+        window.showInputBox.mockResolvedValue('  My Bookmark  ');
+
+        await renameBookmark(store, { bookmark } as any);
+
+        expect(store.getAllBookmarks()[0].label).toBe('My Bookmark');
+
+        const validateInput = window.showInputBox.mock.calls[0][0].validateInput;
+        expect(validateInput('   ')).toMatch(/cannot be empty/);
+        expect(validateInput('My Bookmark')).toBeUndefined();
+    });
+
+    it('does nothing when the input is cancelled', async () => {
+        const store = newStore();
+        const bookmark = makeBookmark();
+        store.addBookmark(bookmark);
+        window.showInputBox.mockResolvedValue(undefined);
+
+        await renameBookmark(store, { bookmark } as any);
+
+        expect(store.getAllBookmarks()[0].label).toBe('a.ts');
     });
 });
 

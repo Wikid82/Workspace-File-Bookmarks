@@ -56,6 +56,13 @@ describe('BookmarkStore', () => {
         expect(store.getAllBookmarks()[0].folderId).toBe('folder-1');
     });
 
+    it('renames a bookmark label', () => {
+        const store = newStore();
+        store.addBookmark(makeBookmark({ id: 'a', label: 'a.ts' }));
+        store.renameBookmark('a', 'My File');
+        expect(store.getAllBookmarks()[0].label).toBe('My File');
+    });
+
     it('creates, renames, and deletes a folder', () => {
         const store = newStore();
         const folder = store.createFolder('Backend');

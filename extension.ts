@@ -40,6 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkFromExplorer', (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) => addBookmarksForUris(store, uri, uris)),
         vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkToFolder', (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) => addBookmarksToFolder(store, uri, uris)),
         vscode.commands.registerCommand('workspace-file-bookmarks.removeBookmark', (item: BookmarkTreeItem) => store.removeBookmark(item.bookmark.id)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.renameBookmark', (item: BookmarkTreeItem) => renameBookmark(store, item)),
         vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark)),
         vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () => createFolder(store)),
         vscode.commands.registerCommand('workspace-file-bookmarks.renameFolder', (item: FolderGroupItem) => renameFolder(store, item)),
@@ -82,6 +83,10 @@ export class BookmarkStore {
 
     moveBookmarkToFolder(id: string, folderId: string | null) {
         this.setBookmarks(this.getAllBookmarks().map(b => (b.id === id ? { ...b, folderId } : b)));
+    }
+
+    renameBookmark(id: string, label: string) {
+        this.setBookmarks(this.getAllBookmarks().map(b => (b.id === id ? { ...b, label } : b)));
     }
 
     createFolder(name: string): BookmarkFolder {
@@ -291,6 +296,17 @@ export async function renameFolder(store: BookmarkStore, item: FolderGroupItem) 
     });
     if (name) {
         store.renameFolder(item.folder.id, name.trim());
+    }
+}
+
+export async function renameBookmark(store: BookmarkStore, item: BookmarkTreeItem) {
+    const label = await vscode.window.showInputBox({
+        prompt: 'Rename bookmark',
+        value: item.bookmark.label,
+        validateInput: value => (value.trim().length === 0 ? 'Bookmark label cannot be empty.' : undefined)
+    });
+    if (label) {
+        store.renameBookmark(item.bookmark.id, label.trim());
     }
 }
 
