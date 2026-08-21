@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.7.0...workspace-file-bookmarks-v1.8.0) (2026-08-21)
+
+
+### Features
+
+* quick-filter / search box for the bookmarks sidebar ([7146176](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/7146176170f9e76750f6606c968f0541ec8229a8))
+* quick-filter / search box for the bookmarks sidebar ([#69](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/69)) ([5f2c9e4](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/5f2c9e453841f79f36b93093b0e005639a7233c9))
+
 ## [1.7.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.6.0...workspace-file-bookmarks-v1.7.0) (2026-08-21)
 
 
