@@ -5,7 +5,11 @@ users bookmark files across a multi-root/multi-repo workspace.
 
 ## Workflow
 
-`development` batches feature work and dependency updates so a merge into
+Feature work happens on `feature/**` branches, one PR per feature. A PR may
+be split into multiple commits, but never merge a feature that isn't
+complete — don't land it half-done. If a task spans multiple features, split
+it into multiple PRs (one per feature) rather than combining them into one.
+`development` batches dependency updates so a merge into
 `main` doesn't trigger a release per commit. `main` is only touched directly
 for CI fixes or hotfixes, which then propagate back down to `development` via
 the `propagate-main-to-development` workflow. `promote-dev-to-main` opens a
