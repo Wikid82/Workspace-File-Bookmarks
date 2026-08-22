@@ -5,14 +5,17 @@ import {
     addBookmarksForUris,
     addBookmarksToFolder,
     createFolder,
+    createSubfolder,
     deleteFolder,
     editBookmarkTags,
     filterBookmarks,
     filterByTag,
+    moveFolderToParent,
     moveToFolder,
     openAllInFolder,
     openBookmark,
     pickFolder,
+    pickParentFolder,
     renameBookmark,
     renameFolder,
     type Bookmark,
@@ -401,7 +404,7 @@ describe('deleteFolder', () => {
         const store = newStore();
         const folder = store.createFolder('Backend');
 
-        await deleteFolder(store, { folder, bookmarks: [] } as any);
+        await deleteFolder(store, { folder, bookmarks: [], childFolders: [] } as any);
 
         expect(store.getAllFolders()).toHaveLength(0);
         expect(window.showWarningMessage).not.toHaveBeenCalled();
@@ -412,7 +415,7 @@ describe('deleteFolder', () => {
         const folder = store.createFolder('Backend');
         window.showWarningMessage.mockResolvedValue('Delete');
 
-        await deleteFolder(store, { folder, bookmarks: [makeBookmark()] } as any);
+        await deleteFolder(store, { folder, bookmarks: [makeBookmark()], childFolders: [] } as any);
 
         expect(store.getAllFolders()).toHaveLength(0);
     });
@@ -422,9 +425,32 @@ describe('deleteFolder', () => {
         const folder = store.createFolder('Backend');
         window.showWarningMessage.mockResolvedValue(undefined);
 
-        await deleteFolder(store, { folder, bookmarks: [makeBookmark()] } as any);
+        await deleteFolder(store, { folder, bookmarks: [makeBookmark()], childFolders: [] } as any);
 
         expect(store.getAllFolders()).toHaveLength(1);
+    });
+
+    it('confirms and mentions subfolders when the folder has children but no bookmarks', async () => {
+        const store = newStore();
+        const folder = store.createFolder('Backend');
+        const child = store.createFolder('Auth Service', folder.id);
+        window.showWarningMessage.mockResolvedValue('Delete');
+
+        await deleteFolder(store, { folder, bookmarks: [], childFolders: [child] } as any);
+
+        expect(window.showWarningMessage.mock.calls[0][0]).toMatch(/1 subfolder\(s\) will move to the root/);
+        expect(store.getAllFolders().find(f => f.id === folder.id)).toBeUndefined();
+    });
+
+    it('mentions both bookmarks and subfolders when a folder has both', async () => {
+        const store = newStore();
+        const folder = store.createFolder('Backend');
+        const child = store.createFolder('Auth Service', folder.id);
+        window.showWarningMessage.mockResolvedValue('Delete');
+
+        await deleteFolder(store, { folder, bookmarks: [makeBookmark()], childFolders: [child] } as any);
+
+        expect(window.showWarningMessage.mock.calls[0][0]).toMatch(/bookmark\(s\).*and.*subfolder\(s\)/);
     });
 });
 
@@ -471,6 +497,104 @@ describe('pickFolder', () => {
         window.showInputBox.mockResolvedValue(undefined);
 
         await expect(pickFolder(store, 'placeholder')).resolves.toBeUndefined();
+    });
+});
+
+describe('pickParentFolder', () => {
+    it('returns null for the root/no-parent pick', async () => {
+        const store = newStore();
+        window.showQuickPick.mockResolvedValue('$(circle-slash) No Parent (root)');
+
+        await expect(pickParentFolder(store, 'placeholder')).resolves.toBeNull();
+    });
+
+    it('returns undefined when the quick pick is cancelled', async () => {
+        const store = newStore();
+        window.showQuickPick.mockResolvedValue(undefined);
+
+        await expect(pickParentFolder(store, 'placeholder')).resolves.toBeUndefined();
+    });
+
+    it('returns the matching folder id, using breadcrumb labels', async () => {
+        const store = newStore();
+        const parent = store.createFolder('Backend');
+        const child = store.createFolder('Auth Service', parent.id);
+        window.showQuickPick.mockResolvedValue('Backend › Auth Service');
+
+        await expect(pickParentFolder(store, 'placeholder')).resolves.toBe(child.id);
+    });
+
+    it('excludes the given folder and its descendants', async () => {
+        const store = newStore();
+        const a = store.createFolder('A');
+        store.createFolder('B', a.id);
+
+        await pickParentFolder(store, 'placeholder', a.id);
+
+        const items = window.showQuickPick.mock.calls[0][0];
+        expect(items).toEqual(['$(circle-slash) No Parent (root)']);
+    });
+});
+
+describe('createSubfolder', () => {
+    it('creates a folder nested under the given item', async () => {
+        const store = newStore();
+        const parent = store.createFolder('Backend');
+        window.showInputBox.mockResolvedValue('  Auth Service  ');
+
+        await createSubfolder(store, { folder: parent } as any);
+
+        const child = store.getAllFolders().find(f => f.parentId === parent.id);
+        expect(child?.name).toBe('Auth Service');
+
+        const validateInput = window.showInputBox.mock.calls[0][0].validateInput;
+        expect(validateInput('   ')).toMatch(/cannot be empty/);
+        expect(validateInput('Auth Service')).toBeUndefined();
+    });
+
+    it('does nothing when the input is cancelled', async () => {
+        const store = newStore();
+        const parent = store.createFolder('Backend');
+        window.showInputBox.mockResolvedValue(undefined);
+
+        await createSubfolder(store, { folder: parent } as any);
+
+        expect(store.getAllFolders().filter(f => f.parentId === parent.id)).toHaveLength(0);
+    });
+
+    it('refuses with a warning when nesting would exceed the max depth', async () => {
+        const store = newStore();
+        const l1 = store.createFolder('L1');
+        const l2 = store.createFolder('L2', l1.id);
+        const l3 = store.createFolder('L3', l2.id);
+
+        await createSubfolder(store, { folder: l3 } as any);
+
+        expect(window.showWarningMessage).toHaveBeenCalledOnce();
+        expect(window.showInputBox).not.toHaveBeenCalled();
+    });
+});
+
+describe('moveFolderToParent', () => {
+    it('reparents the folder to the picked parent', async () => {
+        const store = newStore();
+        const a = store.createFolder('A');
+        const b = store.createFolder('B');
+        window.showQuickPick.mockResolvedValue('A');
+
+        await moveFolderToParent(store, { folder: b } as any);
+
+        expect(store.getAllFolders().find(f => f.id === b.id)?.parentId).toBe(a.id);
+    });
+
+    it('does nothing when the picker is cancelled', async () => {
+        const store = newStore();
+        const a = store.createFolder('A');
+        window.showQuickPick.mockResolvedValue(undefined);
+
+        await moveFolderToParent(store, { folder: a } as any);
+
+        expect(store.getAllFolders().find(f => f.id === a.id)?.parentId).toBeNull();
     });
 });
 

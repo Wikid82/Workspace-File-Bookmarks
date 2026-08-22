@@ -55,6 +55,8 @@ describe('Workspace File Bookmarks (e2e)', () => {
             'workspace-file-bookmarks.clearSearchFilter',
             'workspace-file-bookmarks.openBookmark',
             'workspace-file-bookmarks.createFolder',
+            'workspace-file-bookmarks.createSubfolder',
+            'workspace-file-bookmarks.moveFolderToParent',
             'workspace-file-bookmarks.renameFolder',
             'workspace-file-bookmarks.deleteFolder',
             'workspace-file-bookmarks.moveToFolder',
@@ -161,5 +163,30 @@ describe('Workspace File Bookmarks (e2e)', () => {
         assert.ok(inputBox, 'expected the filterBookmarks command to return the created input box');
         inputBox.hide();
         provider.setSearchFilter(null);
+    });
+
+    it('nests a subfolder under another folder, recurses through the real tree, and reparents via drag-and-drop', async () => {
+        const { store, provider } = await getApi();
+        const parent = store.createFolder('Backend');
+        const child = store.createFolder('Auth Service', parent.id);
+        const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+        await vscode.window.showTextDocument(document);
+        await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+        const [bookmarkItem] = (provider.getChildren() as (BookmarkTreeItem | FolderGroupItem)[]).filter(isBookmarkNode);
+        store.moveBookmarkToFolder(bookmarkItem.bookmark.id, child.id);
+
+        const [parentNode] = provider.getChildren() as FolderGroupItem[];
+        assert.equal(parentNode.folder.id, parent.id);
+        const [childNode] = provider.getChildren(parentNode) as FolderGroupItem[];
+        assert.equal(childNode.folder.id, child.id);
+        const grandchildren = provider.getChildren(childNode) as BookmarkTreeItem[];
+        assert.equal(grandchildren.length, 1);
+        assert.equal(grandchildren[0].bookmark.relativePath, 'src/sample-a.ts');
+
+        // Reparent the child back to the root via the real drag-and-drop handler.
+        const dataTransfer = new vscode.DataTransfer();
+        provider.handleDrag([childNode], dataTransfer);
+        await provider.handleDrop(undefined, dataTransfer);
+        assert.equal(store.getAllFolders().find(f => f.id === child.id)?.parentId, null);
     });
 });

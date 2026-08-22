@@ -11,8 +11,8 @@ describe('activate', () => {
         activate(context as any);
 
         expect(window.createTreeView).toHaveBeenCalledOnce();
-        expect(commands.registerCommand).toHaveBeenCalledTimes(18);
-        expect((context as any).subscriptions).toHaveLength(19); // tree view + 18 commands
+        expect(commands.registerCommand).toHaveBeenCalledTimes(20);
+        expect((context as any).subscriptions).toHaveLength(21); // tree view + 20 commands
     });
 
     it('exercises every registered command handler at least once', async () => {
@@ -38,14 +38,16 @@ describe('activate', () => {
         await handlers.get('workspace-file-bookmarks.clearSearchFilter')?.();
         await handlers.get('workspace-file-bookmarks.openBookmark')?.(bookmark);
         await handlers.get('workspace-file-bookmarks.createFolder')?.();
+        await handlers.get('workspace-file-bookmarks.createSubfolder')?.({ folder });
+        await handlers.get('workspace-file-bookmarks.moveFolderToParent')?.({ folder });
         await handlers.get('workspace-file-bookmarks.renameFolder')?.({ folder });
-        await handlers.get('workspace-file-bookmarks.deleteFolder')?.({ folder, bookmarks: [] });
+        await handlers.get('workspace-file-bookmarks.deleteFolder')?.({ folder, bookmarks: [], childFolders: [] });
         await handlers.get('workspace-file-bookmarks.moveToFolder')?.({ bookmark });
         await handlers.get('workspace-file-bookmarks.openAllInFolder')?.({ folder, bookmarks: [] });
         await handlers.get('workspace-file-bookmarks.setViewModeList')?.();
         await handlers.get('workspace-file-bookmarks.setViewModeTree')?.();
 
-        expect(handlers.size).toBe(18);
+        expect(handlers.size).toBe(20);
     });
 });
 
