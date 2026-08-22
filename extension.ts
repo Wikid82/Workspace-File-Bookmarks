@@ -26,7 +26,11 @@ export interface BookmarkFolder {
     name: string;
     createdAt: number;
     order?: number;
+    parentId?: string | null;
 }
+
+/** Folders may nest up to this many levels deep (root-level folders are depth 1). */
+export const MAX_FOLDER_DEPTH = 3;
 
 export const BOOKMARK_DND_MIME_TYPE = 'application/vnd.code.tree.workspace-file-bookmarks-view';
 
@@ -68,6 +72,83 @@ export function computeReorderedIds<T extends { id: string; order?: number }>(
 const bookmarkFallbackCompare = (a: Bookmark, b: Bookmark) => b.createdAt - a.createdAt;
 const folderFallbackCompare = (a: BookmarkFolder, b: BookmarkFolder) => a.name.localeCompare(b.name);
 
+function folderParentId(folder: BookmarkFolder): string | null {
+    return folder.parentId ?? null;
+}
+
+/** Number of ancestor folders above `parentId` (0 if `parentId` is null/root). */
+function ancestorDepth(folders: BookmarkFolder[], parentId: string | null): number {
+    const byId = new Map(folders.map(f => [f.id, f]));
+    let depth = 0;
+    let current = parentId;
+    const seen = new Set<string>();
+    while (current && !seen.has(current)) {
+        seen.add(current);
+        depth++;
+        current = byId.get(current)?.parentId ?? null;
+    }
+    return depth;
+}
+
+/** Height of the subtree rooted at `folderId` (0 for a folder with no child folders). */
+export function folderSubtreeHeight(folders: BookmarkFolder[], folderId: string): number {
+    const children = folders.filter(f => folderParentId(f) === folderId);
+    if (children.length === 0) {
+        return 0;
+    }
+    return 1 + Math.max(...children.map(c => folderSubtreeHeight(folders, c.id)));
+}
+
+/** Whether `candidateId` is `ancestorId` itself or one of its descendants. */
+export function isDescendantFolder(folders: BookmarkFolder[], ancestorId: string, candidateId: string): boolean {
+    const byId = new Map(folders.map(f => [f.id, f]));
+    let current: string | null = candidateId;
+    const seen = new Set<string>();
+    while (current && !seen.has(current)) {
+        if (current === ancestorId) {
+            return true;
+        }
+        seen.add(current);
+        current = byId.get(current)?.parentId ?? null;
+    }
+    return false;
+}
+
+/** Whether nesting a folder (or a subtree of the given height) under `parentId` stays within MAX_FOLDER_DEPTH. */
+export function canNestUnder(folders: BookmarkFolder[], parentId: string | null, subtreeHeight = 0): boolean {
+    return ancestorDepth(folders, parentId) + 1 + subtreeHeight <= MAX_FOLDER_DEPTH;
+}
+
+/** Folders eligible to be a parent: excludes a folder (and its own descendants, via `excludeFolderId`) and any folder where nesting would exceed MAX_FOLDER_DEPTH. */
+export function eligibleParentFolders(store: BookmarkStore, options: { excludeFolderId?: string } = {}): BookmarkFolder[] {
+    const folders = store.getAllFolders();
+    const subtreeHeight = options.excludeFolderId ? folderSubtreeHeight(folders, options.excludeFolderId) : 0;
+    return folders.filter(f => {
+        if (options.excludeFolderId && (f.id === options.excludeFolderId || isDescendantFolder(folders, options.excludeFolderId, f.id))) {
+            return false;
+        }
+        return canNestUnder(folders, f.id, subtreeHeight);
+    });
+}
+
+/** Breadcrumb label for a folder, e.g. "Backend › Auth Service". A root-level folder's breadcrumb is just its name. */
+export function folderBreadcrumb(folders: BookmarkFolder[], folderId: string): string {
+    const byId = new Map(folders.map(f => [f.id, f]));
+    const parts: string[] = [];
+    let current: string | null = folderId;
+    const seen = new Set<string>();
+    while (current && !seen.has(current)) {
+        const folder = byId.get(current);
+        if (!folder) {
+            break;
+        }
+        parts.unshift(folder.name);
+        seen.add(current);
+        current = folderParentId(folder);
+    }
+    return parts.join(' › ');
+}
+
 /** The extension's public API, returned from `activate()` — used by e2e tests to inspect state that isn't reachable through the tree view UI alone. */
 export interface ExtensionApi {
     store: BookmarkStore;
@@ -102,6 +183,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
         vscode.commands.registerCommand('workspace-file-bookmarks.clearSearchFilter', () => provider.setSearchFilter(null)),
         vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) => openBookmark(bookmark)),
         vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () => createFolder(store)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.createSubfolder', (item: FolderGroupItem) => createSubfolder(store, item)),
+        vscode.commands.registerCommand('workspace-file-bookmarks.moveFolderToParent', (item: FolderGroupItem) => moveFolderToParent(store, item)),
         vscode.commands.registerCommand('workspace-file-bookmarks.renameFolder', (item: FolderGroupItem) => renameFolder(store, item)),
         vscode.commands.registerCommand('workspace-file-bookmarks.deleteFolder', (item: FolderGroupItem) => deleteFolder(store, item)),
         vscode.commands.registerCommand('workspace-file-bookmarks.moveToFolder', (item: BookmarkTreeItem) => moveToFolder(store, item)),
@@ -177,11 +260,12 @@ export class BookmarkStore {
         this.setFolders(this.getAllFolders().map(f => (orderById.has(f.id) ? { ...f, order: orderById.get(f.id) } : f)));
     }
 
-    createFolder(name: string): BookmarkFolder {
+    createFolder(name: string, parentId: string | null = null): BookmarkFolder {
         const folder: BookmarkFolder = {
             id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
             name,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            parentId
         };
         this.setFolders([...this.getAllFolders(), folder]);
         return folder;
@@ -191,8 +275,17 @@ export class BookmarkStore {
         this.setFolders(this.getAllFolders().map(f => (f.id === id ? { ...f, name } : f)));
     }
 
+    moveFolderToParent(id: string, parentId: string | null) {
+        this.setFolders(this.getAllFolders().map(f => (f.id === id ? { ...f, parentId } : f)));
+    }
+
+    /** Deletes a folder, promoting its direct bookmarks and child folders to the root rather than deleting them. */
     deleteFolder(id: string) {
-        this.setFolders(this.getAllFolders().filter(f => f.id !== id));
+        this.setFolders(
+            this.getAllFolders()
+                .filter(f => f.id !== id)
+                .map(f => (f.parentId === id ? { ...f, parentId: null } : f))
+        );
         this.setBookmarks(this.getAllBookmarks().map(b => (b.folderId === id ? { ...b, folderId: null } : b)));
     }
 
@@ -208,11 +301,18 @@ export class BookmarkStore {
 }
 
 export class FolderGroupItem extends vscode.TreeItem {
-    constructor(public readonly folder: BookmarkFolder, public readonly bookmarks: Bookmark[]) {
+    constructor(
+        public readonly folder: BookmarkFolder,
+        public readonly bookmarks: Bookmark[],
+        public readonly childFolders: BookmarkFolder[] = []
+    ) {
         super(folder.name, vscode.TreeItemCollapsibleState.Expanded);
         this.contextValue = 'bookmarkFolder';
         this.iconPath = new vscode.ThemeIcon('folder');
-        this.description = `${bookmarks.length}`;
+        this.description =
+            childFolders.length > 0
+                ? `${bookmarks.length} • ${childFolders.length} subfolder${childFolders.length === 1 ? '' : 's'}`
+                : `${bookmarks.length}`;
     }
 }
 
@@ -298,25 +398,34 @@ export class BookmarksTreeProvider implements vscode.TreeDataProvider<TreeNode>,
             if (element) {
                 return [];
             }
-            const folderById = new Map(folders.map(f => [f.id, f.name]));
             return sortByOrder(bookmarks, bookmarkFallbackCompare).map(
-                b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, folderById.get(b.folderId ?? '') ?? null))
+                b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, folderBreadcrumb(folders, b.folderId ?? '') || null))
             );
         }
 
+        const buildFolderNode = (folder: BookmarkFolder): FolderGroupItem =>
+            new FolderGroupItem(
+                folder,
+                bookmarks.filter(b => b.folderId === folder.id),
+                folders.filter(f => (f.parentId ?? null) === folder.id)
+            );
+
         if (element instanceof FolderGroupItem) {
-            return sortByOrder(element.bookmarks, bookmarkFallbackCompare).map(
+            const childFolderNodes = sortByOrder(element.childFolders, folderFallbackCompare).map(buildFolderNode);
+            const childBookmarkNodes = sortByOrder(element.bookmarks, bookmarkFallbackCompare).map(
                 b => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null))
             );
+            return [...childFolderNodes, ...childBookmarkNodes];
         }
 
         if (element) {
             return [];
         }
 
-        const folderNodes = sortByOrder(folders, folderFallbackCompare).map(
-            folder => new FolderGroupItem(folder, bookmarks.filter(b => b.folderId === folder.id))
-        );
+        const folderNodes = sortByOrder(
+            folders.filter(f => (f.parentId ?? null) === null),
+            folderFallbackCompare
+        ).map(buildFolderNode);
 
         const ungrouped = sortByOrder(
             bookmarks.filter(b => !b.folderId),
@@ -449,6 +558,31 @@ export async function createFolder(store: BookmarkStore) {
     }
 }
 
+/** Creates a subfolder directly under `item.folder`, skipping the parent picker since the parent is implied by the context menu. */
+export async function createSubfolder(store: BookmarkStore, item: FolderGroupItem) {
+    if (!canNestUnder(store.getAllFolders(), item.folder.id)) {
+        vscode.window.showWarningMessage(`Can't create a subfolder here — maximum folder depth (${MAX_FOLDER_DEPTH}) reached.`);
+        return;
+    }
+    const name = await vscode.window.showInputBox({
+        prompt: `New subfolder in "${item.folder.name}"`,
+        placeHolder: 'e.g. Auth Service, Billing Service',
+        validateInput: value => (value.trim().length === 0 ? 'Folder name cannot be empty.' : undefined)
+    });
+    if (name) {
+        store.createFolder(name.trim(), item.folder.id);
+    }
+}
+
+/** Reparents an existing folder under a chosen parent (or back to the root), via a picker that excludes the folder itself, its descendants, and any parent that would exceed MAX_FOLDER_DEPTH. */
+export async function moveFolderToParent(store: BookmarkStore, item: FolderGroupItem) {
+    const parentId = await pickParentFolder(store, `Move "${item.folder.name}" to...`, item.folder.id);
+    if (parentId === undefined) {
+        return;
+    }
+    store.moveFolderToParent(item.folder.id, parentId);
+}
+
 export async function renameFolder(store: BookmarkStore, item: FolderGroupItem) {
     const name = await vscode.window.showInputBox({
         prompt: 'Rename bookmark folder',
@@ -549,9 +683,16 @@ export function filterBookmarks(provider: BookmarksTreeProvider): vscode.InputBo
 }
 
 export async function deleteFolder(store: BookmarkStore, item: FolderGroupItem) {
-    if (item.bookmarks.length > 0) {
+    if (item.bookmarks.length > 0 || item.childFolders.length > 0) {
+        const parts: string[] = [];
+        if (item.bookmarks.length > 0) {
+            parts.push(`${item.bookmarks.length} bookmark(s) will move to the root list`);
+        }
+        if (item.childFolders.length > 0) {
+            parts.push(`${item.childFolders.length} subfolder(s) will move to the root`);
+        }
         const confirm = await vscode.window.showWarningMessage(
-            `Delete folder "${item.folder.name}"? ${item.bookmarks.length} bookmark(s) will move to the root list.`,
+            `Delete folder "${item.folder.name}"? ${parts.join(' and ')}.`,
             { modal: true },
             'Delete'
         );
@@ -568,8 +709,9 @@ const NO_FOLDER_PICK = '$(circle-slash) No Folder (root)';
 /** Prompts the user to choose a bookmark folder. Returns `undefined` if cancelled, `null` for root. */
 export async function pickFolder(store: BookmarkStore, placeHolder: string): Promise<string | null | undefined> {
     const folders = store.getAllFolders();
+    const breadcrumbById = new Map(folders.map(f => [f.id, folderBreadcrumb(folders, f.id)]));
     const picked = await vscode.window.showQuickPick(
-        [NO_FOLDER_PICK, ...folders.map(f => f.name), NEW_FOLDER_PICK],
+        [NO_FOLDER_PICK, ...folders.map(f => breadcrumbById.get(f.id) as string), NEW_FOLDER_PICK],
         { placeHolder }
     );
     if (!picked) {
@@ -591,19 +733,70 @@ export async function pickFolder(store: BookmarkStore, placeHolder: string): Pro
         return store.createFolder(name.trim()).id;
     }
 
-    return folders.find(f => f.name === picked)?.id ?? undefined;
+    return folders.find(f => breadcrumbById.get(f.id) === picked)?.id ?? undefined;
 }
 
-/** Reorders folders by moving `draggedId` to just before the folder `target` represents (or to the end if dropped elsewhere). */
+const NO_PARENT_PICK = '$(circle-slash) No Parent (root)';
+
+/** Prompts the user to choose a parent folder for another folder. Returns `undefined` if cancelled, `null` for root. `excludeFolderId` excludes that folder and its descendants (for reparenting), and folders where nesting would exceed MAX_FOLDER_DEPTH are left out entirely. */
+export async function pickParentFolder(store: BookmarkStore, placeHolder: string, excludeFolderId?: string): Promise<string | null | undefined> {
+    const eligible = eligibleParentFolders(store, { excludeFolderId });
+    const allFolders = store.getAllFolders();
+    const breadcrumbById = new Map(eligible.map(f => [f.id, folderBreadcrumb(allFolders, f.id)]));
+
+    const picked = await vscode.window.showQuickPick([NO_PARENT_PICK, ...eligible.map(f => breadcrumbById.get(f.id) as string)], {
+        placeHolder
+    });
+    if (!picked) {
+        return undefined;
+    }
+    if (picked === NO_PARENT_PICK) {
+        return null;
+    }
+    return eligible.find(f => breadcrumbById.get(f.id) === picked)?.id ?? undefined;
+}
+
+/**
+ * Handles a folder dropped onto `target`: dropping onto another folder always nests the dragged
+ * folder as that folder's last child (moving folders can't be reordered onto each other the way
+ * bookmarks are — there's no way to tell "reorder before" from "nest into" from a single drop
+ * target, so nesting wins since it's the primary reason to drag a folder here). A no-op message
+ * is shown if nesting there would exceed MAX_FOLDER_DEPTH or create a cycle. Dropping on empty
+ * space moves the folder to the root and appends it at the end of the root-level list.
+ */
 export function dropFolder(store: BookmarkStore, draggedId: string, target: TreeNode | undefined) {
+    const folders = store.getAllFolders();
+    const dragged = folders.find(f => f.id === draggedId);
+    if (!dragged) {
+        return;
+    }
+
     if (target instanceof BookmarkTreeItem) {
         return;
     }
-    const beforeId = target instanceof FolderGroupItem ? target.folder.id : null;
-    if (beforeId === draggedId) {
+
+    if (target instanceof FolderGroupItem) {
+        if (target.folder.id === draggedId || isDescendantFolder(folders, draggedId, target.folder.id)) {
+            return;
+        }
+        const height = folderSubtreeHeight(folders, draggedId);
+        if (!canNestUnder(folders, target.folder.id, height)) {
+            vscode.window.showWarningMessage(`Can't nest "${dragged.name}" there — maximum folder depth (${MAX_FOLDER_DEPTH}) reached.`);
+            return;
+        }
+        if ((dragged.parentId ?? null) !== target.folder.id) {
+            store.moveFolderToParent(draggedId, target.folder.id);
+        }
+        const scope = store.getAllFolders().filter(f => (f.parentId ?? null) === target.folder.id);
+        store.reorderFolders(computeReorderedIds(scope, draggedId, null, folderFallbackCompare));
         return;
     }
-    store.reorderFolders(computeReorderedIds(store.getAllFolders(), draggedId, beforeId, folderFallbackCompare));
+
+    if ((dragged.parentId ?? null) !== null) {
+        store.moveFolderToParent(draggedId, null);
+    }
+    const scope = store.getAllFolders().filter(f => (f.parentId ?? null) === null);
+    store.reorderFolders(computeReorderedIds(scope, draggedId, null, folderFallbackCompare));
 }
 
 /**

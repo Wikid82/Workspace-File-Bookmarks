@@ -51,4 +51,4 @@ npm run package    # builds, packages a .vsix, and installs it into VS Code / In
 
 ## Roadmap
 
-Renaming/tagging bookmarks, reordering, and drag-and-drop.
+Renaming/tagging bookmarks, reordering, drag-and-drop, a quick-filter search box, and nested (sub-)folders are all shipped.

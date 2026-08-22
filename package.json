@@ -127,6 +127,17 @@
         "icon": "$(new-folder)"
       },
       {
+        "command": "workspace-file-bookmarks.createSubfolder",
+        "title": "New Subfolder",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "workspace-file-bookmarks.moveFolderToParent",
+        "title": "Move to Parent Folder...",
+        "category": "Workspace File Bookmarks"
+      },
+      {
         "command": "workspace-file-bookmarks.renameFolder",
         "title": "Rename Folder",
         "category": "Workspace File Bookmarks"
@@ -231,12 +242,22 @@
           "group": "inline@1"
         },
         {
-          "command": "workspace-file-bookmarks.deleteFolder",
+          "command": "workspace-file-bookmarks.createSubfolder",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
           "group": "inline@2"
         },
         {
+          "command": "workspace-file-bookmarks.deleteFolder",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
+          "group": "inline@3"
+        },
+        {
           "command": "workspace-file-bookmarks.renameFolder",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
+          "group": "1_modification"
+        },
+        {
+          "command": "workspace-file-bookmarks.moveFolderToParent",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
           "group": "1_modification"
         }

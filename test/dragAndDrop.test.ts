@@ -12,7 +12,7 @@ import {
     type Bookmark
 } from '../extension';
 import { createFakeContext } from './fakeContext';
-import { DataTransfer, DataTransferItem } from './vscode-mock';
+import { DataTransfer, DataTransferItem, window } from './vscode-mock';
 
 function makeBookmark(overrides: Partial<Bookmark> = {}): Bookmark {
     const id = overrides.id ?? 'id-1';
@@ -77,39 +77,87 @@ describe('computeReorderedIds', () => {
 });
 
 describe('dropFolder', () => {
-    it('reorders a folder to just before the target folder', () => {
-        const store = newStore();
-        const a = store.createFolder('A');
-        const b = store.createFolder('B');
-        const c = store.createFolder('C');
-
-        dropFolder(store, c.id, new FolderGroupItem(a, []));
-
-        const byId = new Map(store.getAllFolders().map(f => [f.id, f]));
-        expect(byId.get(c.id)?.order).toBe(0);
-        expect(byId.get(a.id)?.order).toBe(1);
-        expect(byId.get(b.id)?.order).toBe(2);
-    });
-
-    it('moves a folder to the end when dropped on empty space', () => {
+    it('nests the dragged folder as the last child of the target folder', () => {
         const store = newStore();
         const a = store.createFolder('A');
         const b = store.createFolder('B');
 
-        dropFolder(store, a.id, undefined);
+        dropFolder(store, b.id, new FolderGroupItem(a, []));
 
         const byId = new Map(store.getAllFolders().map(f => [f.id, f]));
+        expect(byId.get(b.id)?.parentId).toBe(a.id);
         expect(byId.get(b.id)?.order).toBe(0);
-        expect(byId.get(a.id)?.order).toBe(1);
     });
 
-    it('does nothing when dropped onto itself', () => {
+    it('reorders within the target folder\'s existing children when nesting', () => {
+        const store = newStore();
+        const parent = store.createFolder('Parent');
+        const existingChild = store.createFolder('Existing', parent.id);
+        const root = store.createFolder('Root');
+
+        dropFolder(store, root.id, new FolderGroupItem(parent, []));
+
+        const byId = new Map(store.getAllFolders().map(f => [f.id, f]));
+        expect(byId.get(existingChild.id)?.order).toBe(0);
+        expect(byId.get(root.id)?.order).toBe(1);
+        expect(byId.get(root.id)?.parentId).toBe(parent.id);
+    });
+
+    it('refuses to nest a folder onto itself', () => {
         const store = newStore();
         const a = store.createFolder('A');
 
         dropFolder(store, a.id, new FolderGroupItem(a, []));
 
         expect(store.getAllFolders()[0].order).toBeUndefined();
+    });
+
+    it('refuses to nest a folder onto its own descendant', () => {
+        const store = newStore();
+        const parent = store.createFolder('Parent');
+        const child = store.createFolder('Child', parent.id);
+
+        dropFolder(store, parent.id, new FolderGroupItem(child, []));
+
+        const byId = new Map(store.getAllFolders().map(f => [f.id, f]));
+        expect(byId.get(parent.id)?.parentId).toBeNull();
+        expect(byId.get(parent.id)?.order).toBeUndefined();
+    });
+
+    it('refuses to nest when it would exceed the max folder depth, with a warning', () => {
+        const store = newStore();
+        const level1 = store.createFolder('L1');
+        const level2 = store.createFolder('L2', level1.id);
+        const level3 = store.createFolder('L3', level2.id);
+        const dragged = store.createFolder('Dragged');
+
+        dropFolder(store, dragged.id, new FolderGroupItem(level3, []));
+
+        expect(store.getAllFolders().find(f => f.id === dragged.id)?.parentId).toBeNull();
+        expect(window.showWarningMessage).toHaveBeenCalledOnce();
+    });
+
+    it('moves a folder to the root and appends it when dropped on empty space', () => {
+        const store = newStore();
+        const parent = store.createFolder('Parent');
+        const nested = store.createFolder('Nested', parent.id);
+
+        dropFolder(store, nested.id, undefined);
+
+        const byId = new Map(store.getAllFolders().map(f => [f.id, f]));
+        expect(byId.get(nested.id)?.parentId).toBeNull();
+        expect(byId.get(parent.id)?.order).toBe(0);
+        expect(byId.get(nested.id)?.order).toBe(1);
+    });
+
+    it('does nothing when the dragged folder no longer exists', () => {
+        const store = newStore();
+        const a = store.createFolder('A');
+
+        dropFolder(store, 'missing', undefined);
+
+        expect(store.getAllFolders()[0].order).toBeUndefined();
+        void a;
     });
 
     it('ignores a drop onto a bookmark item', () => {
@@ -253,7 +301,7 @@ describe('BookmarksTreeProvider drag and drop', () => {
         expect(dataTransfer.get(BOOKMARK_DND_MIME_TYPE)).toBeUndefined();
     });
 
-    it('handleDrop reorders folders end-to-end via the data transfer payload', async () => {
+    it('handleDrop nests a folder end-to-end via the data transfer payload', async () => {
         const { store, provider } = newProvider();
         const a = store.createFolder('A');
         const b = store.createFolder('B');
@@ -263,8 +311,8 @@ describe('BookmarksTreeProvider drag and drop', () => {
         await provider.handleDrop(new FolderGroupItem(a, []), dataTransfer as any);
 
         const byId = new Map(store.getAllFolders().map(f => [f.id, f]));
+        expect(byId.get(b.id)?.parentId).toBe(a.id);
         expect(byId.get(b.id)?.order).toBe(0);
-        expect(byId.get(a.id)?.order).toBe(1);
     });
 
     it('handleDrop reorders bookmarks end-to-end via the data transfer payload', async () => {

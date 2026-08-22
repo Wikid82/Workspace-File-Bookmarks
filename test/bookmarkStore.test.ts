@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { BookmarkStore, describeBookmark, matchesSearchFilter, type Bookmark } from '../extension';
+import {
+    BookmarkStore,
+    MAX_FOLDER_DEPTH,
+    canNestUnder,
+    describeBookmark,
+    eligibleParentFolders,
+    folderBreadcrumb,
+    folderSubtreeHeight,
+    isDescendantFolder,
+    matchesSearchFilter,
+    type Bookmark,
+    type BookmarkFolder
+} from '../extension';
 import { createFakeContext } from './fakeContext';
 
 function makeBookmark(overrides: Partial<Bookmark> = {}): Bookmark {
@@ -127,6 +139,39 @@ describe('BookmarkStore', () => {
         expect(store.getAllBookmarks()[0].folderId).toBeNull();
     });
 
+    it('creates a folder with a parent when given one', () => {
+        const store = newStore();
+        const parent = store.createFolder('Backend');
+        const child = store.createFolder('Auth Service', parent.id);
+        expect(child.parentId).toBe(parent.id);
+    });
+
+    it('defaults a folder to root (parentId null) when no parent is given', () => {
+        const store = newStore();
+        const folder = store.createFolder('Backend');
+        expect(folder.parentId).toBeNull();
+    });
+
+    it('moves a folder to a new parent', () => {
+        const store = newStore();
+        const a = store.createFolder('A');
+        const b = store.createFolder('B');
+
+        store.moveFolderToParent(b.id, a.id);
+
+        expect(store.getAllFolders().find(f => f.id === b.id)?.parentId).toBe(a.id);
+    });
+
+    it('promotes child folders to root when their parent is deleted', () => {
+        const store = newStore();
+        const parent = store.createFolder('Backend');
+        const child = store.createFolder('Auth Service', parent.id);
+
+        store.deleteFolder(parent.id);
+
+        expect(store.getAllFolders().find(f => f.id === child.id)?.parentId).toBeNull();
+    });
+
     it('fires onDidChange when bookmarks or folders change', () => {
         const store = newStore();
         let fireCount = 0;
@@ -190,5 +235,109 @@ describe('matchesSearchFilter', () => {
 
     it('treats a blank query as matching everything', () => {
         expect(matchesSearchFilter(bookmark, '   ')).toBe(true);
+    });
+});
+
+function makeFolder(id: string, name: string, parentId: string | null = null): BookmarkFolder {
+    return { id, name, createdAt: 0, parentId };
+}
+
+describe('folderSubtreeHeight', () => {
+    it('is 0 for a folder with no children', () => {
+        const folders = [makeFolder('a', 'A')];
+        expect(folderSubtreeHeight(folders, 'a')).toBe(0);
+    });
+
+    it('is the depth of the deepest descendant chain', () => {
+        const folders = [makeFolder('a', 'A'), makeFolder('b', 'B', 'a'), makeFolder('c', 'C', 'b')];
+        expect(folderSubtreeHeight(folders, 'a')).toBe(2);
+    });
+});
+
+describe('isDescendantFolder', () => {
+    const folders = [makeFolder('a', 'A'), makeFolder('b', 'B', 'a'), makeFolder('c', 'C', 'b'), makeFolder('sibling', 'Sibling')];
+
+    it('is true for the folder itself', () => {
+        expect(isDescendantFolder(folders, 'a', 'a')).toBe(true);
+    });
+
+    it('is true for a direct child', () => {
+        expect(isDescendantFolder(folders, 'a', 'b')).toBe(true);
+    });
+
+    it('is true for a deeper descendant', () => {
+        expect(isDescendantFolder(folders, 'a', 'c')).toBe(true);
+    });
+
+    it('is false for an unrelated folder', () => {
+        expect(isDescendantFolder(folders, 'a', 'sibling')).toBe(false);
+    });
+});
+
+describe('canNestUnder', () => {
+    it('allows nesting at the root', () => {
+        expect(canNestUnder([], null)).toBe(true);
+    });
+
+    it('allows nesting up to MAX_FOLDER_DEPTH', () => {
+        const folders = [makeFolder('l1', 'L1'), makeFolder('l2', 'L2', 'l1')];
+        expect(canNestUnder(folders, 'l2')).toBe(true);
+    });
+
+    it('refuses nesting that would exceed MAX_FOLDER_DEPTH', () => {
+        const folders = [makeFolder('l1', 'L1'), makeFolder('l2', 'L2', 'l1'), makeFolder('l3', 'L3', 'l2')];
+        expect(canNestUnder(folders, 'l3')).toBe(false);
+    });
+
+    it('accounts for the height of a subtree being moved', () => {
+        const folders = [makeFolder('l1', 'L1'), makeFolder('l2', 'L2', 'l1')];
+        // l2 has no children (height 0) so nesting under l1 (depth 1) is fine...
+        expect(canNestUnder(folders, 'l1', 0)).toBe(true);
+        // ...but nesting a subtree of height 1 under l2 (depth 2) would reach depth 4.
+        expect(canNestUnder(folders, 'l2', 1)).toBe(false);
+    });
+
+    it('confirms MAX_FOLDER_DEPTH is 3', () => {
+        expect(MAX_FOLDER_DEPTH).toBe(3);
+    });
+});
+
+describe('eligibleParentFolders', () => {
+    it('excludes folders that are already at max depth', () => {
+        const store = newStore();
+        const l1 = store.createFolder('L1');
+        const l2 = store.createFolder('L2', l1.id);
+        store.createFolder('L3', l2.id);
+
+        const eligible = eligibleParentFolders(store);
+
+        expect(eligible.map(f => f.id)).toEqual([l1.id, l2.id]);
+    });
+
+    it('excludes the folder itself and its descendants when reparenting', () => {
+        const store = newStore();
+        const a = store.createFolder('A');
+        store.createFolder('B', a.id);
+        const sibling = store.createFolder('Sibling');
+
+        const eligible = eligibleParentFolders(store, { excludeFolderId: a.id });
+
+        expect(eligible.map(f => f.id)).toEqual([sibling.id]);
+    });
+});
+
+describe('folderBreadcrumb', () => {
+    it('is just the name for a root-level folder', () => {
+        const folders = [makeFolder('a', 'Backend')];
+        expect(folderBreadcrumb(folders, 'a')).toBe('Backend');
+    });
+
+    it('joins ancestors with a chevron for a nested folder', () => {
+        const folders = [makeFolder('a', 'Backend'), makeFolder('b', 'Auth Service', 'a')];
+        expect(folderBreadcrumb(folders, 'b')).toBe('Backend › Auth Service');
+    });
+
+    it('stops cleanly at a dangling (missing) folder id', () => {
+        expect(folderBreadcrumb([], 'missing')).toBe('');
     });
 });

@@ -225,5 +225,85 @@ describe('BookmarksTreeProvider', () => {
 
             expect(bookmarkNode.description).toContain('repo');
         });
+
+        describe('nested folders', () => {
+            it('shows only root-level folders at the top level', () => {
+                const { store, provider } = newProvider();
+                const parent = store.createFolder('Backend');
+                store.createFolder('Auth Service', parent.id);
+
+                const children = provider.getChildren();
+
+                expect(children.filter((c): c is FolderGroupItem => c instanceof FolderGroupItem).map(f => f.folder.name)).toEqual([
+                    'Backend'
+                ]);
+            });
+
+            it('lists child folders (alphabetized) before direct bookmarks when a folder is expanded', () => {
+                const { store, provider } = newProvider();
+                const parent = store.createFolder('Backend');
+                store.createFolder('Zeta Service', parent.id);
+                store.createFolder('Alpha Service', parent.id);
+                store.addBookmark(makeBookmark({ id: 'direct', folderId: parent.id }));
+
+                const [parentNode] = provider.getChildren();
+                const children = provider.getChildren(parentNode);
+
+                expect(children.map(c => (c instanceof FolderGroupItem ? c.folder.name : (c as BookmarkTreeItem).bookmark.id))).toEqual([
+                    'Alpha Service',
+                    'Zeta Service',
+                    'direct'
+                ]);
+            });
+
+            it('recurses through multiple levels of nesting', () => {
+                const { store, provider } = newProvider();
+                const l1 = store.createFolder('L1');
+                const l2 = store.createFolder('L2', l1.id);
+                store.addBookmark(makeBookmark({ id: 'deep', folderId: l2.id }));
+
+                const [l1Node] = provider.getChildren();
+                const [l2Node] = provider.getChildren(l1Node) as FolderGroupItem[];
+                const l2Children = provider.getChildren(l2Node) as BookmarkTreeItem[];
+
+                expect(l2Node.folder.id).toBe(l2.id);
+                expect(l2Children.map(c => c.bookmark.id)).toEqual(['deep']);
+            });
+
+            it('shows a subfolder count in the description alongside the bookmark count', () => {
+                const { store } = newProvider();
+                const parent = store.createFolder('Backend');
+                store.createFolder('Auth Service', parent.id);
+                store.addBookmark(makeBookmark({ folderId: parent.id }));
+
+                const node = new FolderGroupItem(parent, [makeBookmark({ folderId: parent.id })], [
+                    { id: 'child', name: 'Auth Service', createdAt: 0, parentId: parent.id }
+                ]);
+
+                expect(node.description).toBe('1 • 1 subfolder');
+            });
+
+            it('uses the plural "subfolders" when there is more than one', () => {
+                const parent = { id: 'p', name: 'Backend', createdAt: 0, parentId: null };
+                const node = new FolderGroupItem(parent, [], [
+                    { id: 'c1', name: 'A', createdAt: 0, parentId: 'p' },
+                    { id: 'c2', name: 'B', createdAt: 0, parentId: 'p' }
+                ]);
+
+                expect(node.description).toBe('0 • 2 subfolders');
+            });
+
+            it('shows a breadcrumb path for a nested folder in list mode', () => {
+                const { store, provider } = newProvider();
+                provider.setViewMode('list');
+                const parent = store.createFolder('Backend');
+                const child = store.createFolder('Auth Service', parent.id);
+                store.addBookmark(makeBookmark({ folderId: child.id }));
+
+                const [bookmarkNode] = provider.getChildren() as BookmarkTreeItem[];
+
+                expect(bookmarkNode.description).toContain('Backend › Auth Service');
+            });
+        });
     });
 });
