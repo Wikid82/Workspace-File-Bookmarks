@@ -20,9 +20,13 @@ drives versioning and publishing off Conventional Commit prefixes on `main`.
 
 Every change is expected to clear this bar before it's mergeable:
 
-- **CI clean.** `npm run lint` (`tsc --noEmit`), `npm run test`,
-  `npm run build`, and `npm run test:e2e` all pass — see
-  `.github/workflows/ci.yml`.
+- **CI clean.** `npm run lint` (`npm run lint:types` — `tsc --noEmit` —
+  followed by `npm run lint:style` — `eslint .`), `npm run format:check`,
+  `npm run test`, `npm run build`, and `npm run test:e2e` all pass — see
+  `.github/workflows/ci.yml`. `lefthook` runs the same lint/format checks and
+  the unit suite locally on `pre-commit` against staged files (installed
+  automatically via the `postinstall` script after `npm install`; see
+  `lefthook.yml`), so most of this is caught before it ever reaches CI.
 - **Unit coverage ≥85%, both patch and project.** Codecov enforces this on
   every PR (`codecov.yml`: `project` and `patch`, both `target: 85%,
   threshold: 1%`), reported from `npm run test:coverage` (vitest + v8,
