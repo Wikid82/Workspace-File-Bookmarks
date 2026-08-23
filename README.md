@@ -38,10 +38,15 @@ This extension is early — I'm actively looking for feedback on what's useful a
 npm install
 npm run build     # bundle extension.ts -> dist/extension.cjs
 npm run watch      # rebuild on change
-npm run lint       # type-check only
+npm run lint       # type-check (tsc) + eslint
+npm run format     # prettier --write
 ```
 
 Press `F5` in VS Code to launch an Extension Development Host with the extension loaded.
+
+`npm install` also wires up [lefthook](https://github.com/evilmartians/lefthook) to
+run lint/format/test checks on `pre-commit`. See [CONTRIBUTING.md](CONTRIBUTING.md)
+for the full workflow and Definition of Done.
 
 ## Packaging / local install
 
