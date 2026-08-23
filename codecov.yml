@@ -22,17 +22,17 @@ comment:
   require_changes: false
   require_base: false
   require_head: true
-  layout: "reach, diff, flags, files"
+  layout: 'reach, diff, flags, files'
   behavior: default
 
 # Keep in sync with scripts/local-patch-report.sh's own exclude list.
 ignore:
-  - "test/**"
-  - "**/*.test.ts"
-  - "**/*.d.ts"
-  - "scripts/**"
-  - "*.md"
-  - ".github/**"
-  - "vitest.config.mts"
-  - "dist/**"
-  - "coverage/**"
+  - 'test/**'
+  - '**/*.test.ts'
+  - '**/*.d.ts'
+  - 'scripts/**'
+  - '*.md'
+  - '.github/**'
+  - 'vitest.config.mts'
+  - 'dist/**'
+  - 'coverage/**'

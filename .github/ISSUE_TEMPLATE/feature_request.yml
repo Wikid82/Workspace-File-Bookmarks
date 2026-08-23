@@ -1,6 +1,6 @@
 name: Feature request
 description: Suggest a feature or improvement for Workspace File Bookmarks
-labels: ["enhancement"]
+labels: ['enhancement']
 body:
   - type: textarea
     id: problem
