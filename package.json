@@ -292,9 +292,14 @@
     "build": "esbuild extension.ts --bundle --platform=node --format=cjs --sourcemap --external:vscode --outfile=dist/extension.cjs",
     "watch": "esbuild extension.ts --bundle --platform=node --format=cjs --sourcemap --external:vscode --outfile=dist/extension.cjs --watch",
     "vscode:prepublish": "npm run build",
+    "postinstall": "lefthook install",
     "package": "bash scripts/rebuild.sh",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit",
+    "lint": "npm run lint:types && npm run lint:style",
+    "lint:types": "tsc --noEmit",
+    "lint:style": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "pretest:e2e": "npm run build && esbuild test/e2e/*.test.ts --bundle --outdir=out-e2e --platform=node --format=cjs --external:vscode --sourcemap",
@@ -305,6 +310,7 @@
     "serialize-javascript": "^7.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.2.0",
     "@types/vscode": "^1.134.0",
@@ -313,7 +319,12 @@
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.2",
+    "eslint": "^10.9.0",
+    "eslint-config-prettier": "^10.1.8",
+    "lefthook": "^2.1.10",
+    "prettier": "^3.9.6",
     "typescript": "~6.0.3",
+    "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.11"
   }
 }

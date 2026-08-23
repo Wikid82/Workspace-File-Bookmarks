@@ -1,0 +1,8 @@
+dist/
+coverage/
+out-e2e/
+.vscode-test/
+node_modules/
+*.md
+*.vsix
+package-lock.json
