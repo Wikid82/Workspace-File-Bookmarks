@@ -1,6 +1,6 @@
 name: Bug report
 description: Something in Workspace File Bookmarks isn't working as expected
-labels: ["bug"]
+labels: ['bug']
 body:
   - type: textarea
     id: description

@@ -1,0 +1,15 @@
+pre-commit:
+  parallel: true
+  commands:
+    lint-types:
+      glob: '*.{ts,mts,cts}'
+      run: npm run lint:types
+    lint-style:
+      glob: '*.{ts,mts,cts,js,mjs,cjs}'
+      run: npx eslint {staged_files}
+    format:
+      glob: '*.{ts,mts,cts,js,mjs,cjs,json,md,yml,yaml}'
+      run: npx prettier --check {staged_files}
+    test:
+      glob: '*.{ts,mts,cts}'
+      run: npx vitest run

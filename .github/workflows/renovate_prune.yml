@@ -1,12 +1,12 @@
-name: "Prune Renovate Branches"
+name: 'Prune Renovate Branches'
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * *'   # daily at 03:00 UTC
+    - cron: '0 3 * * *' # daily at 03:00 UTC
 
 permissions:
-  contents: write       # required to delete branch refs
+  contents: write # required to delete branch refs
   pull-requests: read
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
       cancel-in-progress: true
 
     env:
-      BRANCH_PREFIX: "renovate/"  # adjust if you use a different prefix
+      BRANCH_PREFIX: 'renovate/' # adjust if you use a different prefix
 
     steps:
       - name: Prune renovate branches
