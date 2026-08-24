@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.8.0...workspace-file-bookmarks-v1.9.0) (2026-08-24)
+
+
+### Features
+
+* support nested (sub-)folders ([3145ca7](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/3145ca75f458f58cd54c12314969beea3893caf4))
+* support nested (sub-)folders ([#73](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/73)) ([ffebd9d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/ffebd9d591bff5791048705b86356a649335a2aa))
+
 ## [1.8.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.7.0...workspace-file-bookmarks-v1.8.0) (2026-08-21)
 
 
