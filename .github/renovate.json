@@ -66,6 +66,13 @@
       "matchPackageNames": ["eslint"],
       "matchUpdateTypes": ["major"],
       "enabled": false
+    },
+    {
+      "description": "Don't bump engines.vscode on its own. scripts/wfb_dep_update.sh keeps it locked to @types/vscode, which lags the VS Code release train (e.g. no @types/vscode@1.135.0 yet), and vsce refuses to package when engines.vscode is ahead of @types/vscode. The engine moves up on the next update-script run once @types/vscode catches up.",
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["engines"],
+      "matchPackageNames": ["vscode"],
+      "enabled": false
     }
   ]
 }

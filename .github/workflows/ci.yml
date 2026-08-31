@@ -33,7 +33,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 24.19.0
+          node-version: 24.20.0
           cache: 'npm'
 
       - name: Install dependencies
@@ -72,14 +72,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 24.19.0
+          node-version: 24.20.0
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Install Xvfb
-        run: sudo apt-get update && sudo apt-get install -y xvfb
+        # Drop the Microsoft/Azure-CLI apt repos before updating: they are not
+        # needed here and their intermittent 403s on packages.microsoft.com
+        # otherwise fail `apt-get update` (exit 100) under `bash -e`.
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list \
+                     /etc/apt/sources.list.d/azure-cli.list \
+                     /etc/apt/sources.list.d/azure-cli.sources
+          sudo apt-get update
+          sudo apt-get install -y xvfb
 
       - name: Run e2e tests
         run: xvfb-run -a npm run test:e2e
