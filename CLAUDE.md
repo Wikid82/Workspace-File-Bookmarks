@@ -16,6 +16,24 @@ the `propagate-main-to-development` workflow. `promote-dev-to-main` opens a
 weekly PR the other direction once `development`'s CI is green. release-please
 drives versioning and publishing off Conventional Commit prefixes on `main`.
 
+Commit-prefix conventions (applies to PR titles, and to local commits so a
+bundled promotion still parses):
+
+- `deps:` for any dependency bump — Renovate emits this automatically
+  (`.github/renovate.json` → `semanticCommitType: deps`). It cuts a patch
+  release and lands in the changelog's "Dependencies" section, which is the
+  point: a vuln fix in a bundled dependency should ship a new version.
+- `chore:` for dependency bumps that don't affect the bundled extension —
+  GitHub Actions digest pins, CI-only tooling. Non-releasable by design.
+- `ci:` for `.github/workflows/*`, `build:` for build-tooling changes that
+  aren't dep bumps, `docs:` for docs-only. All non-releasable.
+- `feat:` / `fix:` for actual product changes, as normal.
+- Only `feat:`, `fix:`, `perf:`, `deps:`, and breaking changes (`!` /
+  `BREAKING CHANGE:`) trigger a release — `release-please-config.json` →
+  `changelog-sections` defines the set (a type listed there without
+  `"hidden": true` is release-triggering; that's why `deps` bumps a version
+  and `chore`/`ci` don't).
+
 ## Definition of Done
 
 Every change is expected to clear this bar before it's mergeable:
