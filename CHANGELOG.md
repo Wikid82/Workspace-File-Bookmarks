@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.9.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.9.0...workspace-file-bookmarks-v1.9.1) (2026-09-14)
+
+
+### Bug Fixes
+
+* **deps:** bump @types/node, eslint, typescript-eslint dev deps ([eaf4b7e](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/eaf4b7e7e7a61450cc0fdf64224e9ff41dc3551e))
+
+
+### Dependencies
+
+* add vite as explicit devDependency for vitest 5 ([785c8a1](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/785c8a12438636a9ea3d0483995d3b46c7984752))
+* bump vite to ^8.2.2 ([d6f5923](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/d6f59237b53ffbec6cef5652c1456efa09cf3c16))
+
 ## [1.9.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.8.0...workspace-file-bookmarks-v1.9.0) (2026-08-24)
 
 
