@@ -34,6 +34,14 @@ bundled promotion still parses):
   `"hidden": true` is release-triggering; that's why `deps` bumps a version
   and `chore`/`ci` don't).
 
+## Claude Code Attribution
+
+Commits and PRs may note that Claude Code was used (e.g. `Co-Authored-By:
+Claude ...` / "Generated with Claude Code"), but never include a
+`claude.ai/code/session_...` link or other session/account-identifying
+detail. `.claude/settings.json` sets `attribution.sessionUrl: false` to
+enforce this — don't override it locally to re-enable session links.
+
 ## Definition of Done
 
 Every change is expected to clear this bar before it's mergeable:
