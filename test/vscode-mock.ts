@@ -37,6 +37,31 @@ export class Uri {
   }
 }
 
+export class Position {
+  constructor(
+    public readonly line: number,
+    public readonly character: number,
+  ) {}
+}
+
+export class Range {
+  public readonly start: Position;
+  public readonly end: Position;
+
+  constructor(startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
+    this.start = new Position(startLine, startCharacter);
+    this.end = new Position(endLine, endCharacter);
+  }
+}
+
+export class Selection extends Range {
+  constructor(start: Position, end: Position) {
+    super(start.line, start.character, end.line, end.character);
+  }
+}
+
+export const TextEditorRevealType = { InCenter: 2 };
+
 export const TreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
 
 export class TreeItem {
@@ -116,13 +141,16 @@ export class InputBox {
 }
 
 export const window = {
-  activeTextEditor: undefined as { document: { uri: Uri } } | undefined,
+  activeTextEditor: undefined as { document: { uri: Uri }; selection: Selection } | undefined,
   showInformationMessage: vi.fn(),
   showWarningMessage: vi.fn(),
   showErrorMessage: vi.fn(),
   showInputBox: vi.fn(),
   showQuickPick: vi.fn(),
-  showTextDocument: vi.fn(),
+  showTextDocument: vi.fn(() => ({
+    selection: undefined,
+    revealRange: vi.fn(),
+  })),
   createTreeView: vi.fn(() => ({ dispose: () => {} })),
   createInputBox: vi.fn(() => new InputBox()),
 };

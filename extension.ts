@@ -19,6 +19,10 @@ export interface Bookmark {
   createdAt: number;
   order?: number;
   tags?: string[];
+  /** 1-based, inclusive. Present only for a bookmark scoped to a line/selection rather than the whole file. */
+  lineStart?: number;
+  /** 1-based, inclusive. Equal to `lineStart` for a single-line bookmark. */
+  lineEnd?: number;
 }
 
 export interface BookmarkFolder {
@@ -203,6 +207,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('workspace-file-bookmarks.addBookmark', () =>
       addActiveFileBookmark(store),
     ),
+    vscode.commands.registerCommand('workspace-file-bookmarks.addBookmarkForSelection', () =>
+      addActiveSelectionBookmark(store),
+    ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.addBookmarkFromExplorer',
       (uri: vscode.Uri | undefined, uris: vscode.Uri[] | undefined) =>
@@ -295,8 +302,15 @@ export class BookmarkStore {
 
   addBookmark(bookmark: Bookmark) {
     const existing = this.getAllBookmarks();
-    if (existing.some((b) => b.uri === bookmark.uri)) {
-      vscode.window.showInformationMessage(`Already bookmarked: ${bookmark.relativePath}`);
+    if (
+      existing.some(
+        (b) =>
+          b.uri === bookmark.uri &&
+          b.lineStart === bookmark.lineStart &&
+          b.lineEnd === bookmark.lineEnd,
+      )
+    ) {
+      vscode.window.showInformationMessage(`Already bookmarked: ${bookmark.label}`);
       return;
     }
     this.setBookmarks([bookmark, ...existing]);
@@ -414,7 +428,10 @@ export class BookmarkTreeItem extends vscode.TreeItem {
   ) {
     super(bookmark.label, vscode.TreeItemCollapsibleState.None);
     this.description = descriptionParts.join(' • ');
-    this.tooltip = bookmark.relativePath;
+    this.tooltip =
+      bookmark.lineStart !== undefined
+        ? `${bookmark.relativePath}:${formatLineRange({ lineStart: bookmark.lineStart, lineEnd: bookmark.lineEnd })}`
+        : bookmark.relativePath;
     this.iconPath = new vscode.ThemeIcon('bookmark');
     this.contextValue = 'bookmarkItem';
     this.command = {
@@ -592,6 +609,12 @@ export function matchesSearchFilter(bookmark: Bookmark, query: string): boolean 
   );
 }
 
+/** Formats a 1-based, inclusive line range, e.g. "L12" for a single line or "L12-18" for a span. */
+export function formatLineRange(range: { lineStart: number; lineEnd?: number }): string {
+  const end = range.lineEnd ?? range.lineStart;
+  return range.lineStart === end ? `L${range.lineStart}` : `L${range.lineStart}-${end}`;
+}
+
 export function describeBookmark(
   bookmark: Bookmark,
   isMultiRoot: boolean,
@@ -605,17 +628,27 @@ export function describeBookmark(
     parts.push(bookmark.workspaceFolderName);
   }
   parts.push(bookmark.relativePath);
+  if (bookmark.lineStart !== undefined) {
+    parts.push(formatLineRange({ lineStart: bookmark.lineStart, lineEnd: bookmark.lineEnd }));
+  }
   if (bookmark.tags && bookmark.tags.length > 0) {
     parts.push(bookmark.tags.map((tag) => `#${tag}`).join(' '));
   }
   return parts;
 }
 
-export function toBookmark(uri: vscode.Uri): Bookmark {
+/** A 1-based, inclusive line range to scope a bookmark to, instead of the whole file. */
+export interface LineSelection {
+  lineStart: number;
+  lineEnd: number;
+}
+
+export function toBookmark(uri: vscode.Uri, selection?: LineSelection): Bookmark {
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
   const workspaceFolderName = workspaceFolder?.name ?? 'Workspace';
   const relativePath = workspaceFolder ? vscode.workspace.asRelativePath(uri, false) : uri.fsPath;
-  const label = relativePath.split('/').pop() || relativePath;
+  const fileName = relativePath.split('/').pop() || relativePath;
+  const label = selection ? `${fileName}:${formatLineRange(selection)}` : fileName;
 
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -625,6 +658,7 @@ export function toBookmark(uri: vscode.Uri): Bookmark {
     workspaceFolderName,
     folderId: null,
     createdAt: Date.now(),
+    ...(selection ? { lineStart: selection.lineStart, lineEnd: selection.lineEnd } : {}),
   };
 }
 
@@ -635,6 +669,22 @@ export function addActiveFileBookmark(store: BookmarkStore) {
     return;
   }
   store.addBookmark(toBookmark(editor.document.uri));
+}
+
+/** Bookmarks the active editor's current line, or its full selection when one spans multiple lines. */
+export function addActiveSelectionBookmark(store: BookmarkStore) {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    vscode.window.showWarningMessage('Open a file to bookmark a line or selection.');
+    return;
+  }
+  const { selection } = editor;
+  store.addBookmark(
+    toBookmark(editor.document.uri, {
+      lineStart: selection.start.line + 1,
+      lineEnd: selection.end.line + 1,
+    }),
+  );
 }
 
 export function addBookmarksForUris(
@@ -652,7 +702,14 @@ export async function openBookmark(bookmark: Bookmark) {
   try {
     const uri = vscode.Uri.parse(bookmark.uri);
     const document = await vscode.workspace.openTextDocument(uri);
-    await vscode.window.showTextDocument(document, { preview: false });
+    const editor = await vscode.window.showTextDocument(document, { preview: false });
+    if (bookmark.lineStart !== undefined && editor) {
+      const startLine = bookmark.lineStart - 1;
+      const endLine = (bookmark.lineEnd ?? bookmark.lineStart) - 1;
+      const range = new vscode.Range(startLine, 0, endLine, 0);
+      editor.selection = new vscode.Selection(range.start, range.end);
+      editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+    }
   } catch {
     vscode.window.showErrorMessage(
       `Could not open "${bookmark.relativePath}". The file may have been moved or deleted.`,

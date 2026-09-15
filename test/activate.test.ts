@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { activate, deactivate } from '../extension';
 import { createFakeContext } from './fakeContext';
-import { commands, window } from './vscode-mock';
+import { commands, Position, Selection, Uri, window } from './vscode-mock';
 
 describe('activate', () => {
   it('creates the tree view and registers every command', () => {
@@ -11,8 +11,8 @@ describe('activate', () => {
     activate(context as any);
 
     expect(window.createTreeView).toHaveBeenCalledOnce();
-    expect(commands.registerCommand).toHaveBeenCalledTimes(20);
-    expect((context as any).subscriptions).toHaveLength(21); // tree view + 20 commands
+    expect(commands.registerCommand).toHaveBeenCalledTimes(21);
+    expect((context as any).subscriptions).toHaveLength(22); // tree view + 21 commands
   });
 
   it('exercises every registered command handler at least once', async () => {
@@ -37,6 +37,12 @@ describe('activate', () => {
     const folder = { id: 'f', name: 'Backend', createdAt: 0 };
 
     await handlers.get('workspace-file-bookmarks.addBookmark')?.();
+    window.activeTextEditor = {
+      document: { uri: Uri.file('/repo/a.ts') },
+      selection: new Selection(new Position(0, 0), new Position(0, 0)),
+    };
+    await handlers.get('workspace-file-bookmarks.addBookmarkForSelection')?.();
+    window.activeTextEditor = undefined;
     await handlers.get('workspace-file-bookmarks.addBookmarkFromExplorer')?.(undefined, undefined);
     await handlers.get('workspace-file-bookmarks.addBookmarkToFolder')?.(undefined, undefined);
     await handlers.get('workspace-file-bookmarks.removeBookmark')?.({ bookmark });
@@ -61,7 +67,7 @@ describe('activate', () => {
     await handlers.get('workspace-file-bookmarks.setViewModeList')?.();
     await handlers.get('workspace-file-bookmarks.setViewModeTree')?.();
 
-    expect(handlers.size).toBe(20);
+    expect(handlers.size).toBe(21);
   });
 });
 

@@ -18,6 +18,7 @@ listings with a visual convert far better than text-only ones.
 ## Features
 
 - **Bookmark from anywhere** — the editor title bar, the command palette, or right-click in the Explorer, including multi-select to bookmark several files at once.
+- **Bookmark a specific line or selection** — right-click inside a file (or run "Bookmark Line/Selection" from the command palette) to pin the current line or selected range, not just the whole file; opening it jumps straight back to that spot.
 - **Organize into folders** — create, rename, delete, and move bookmarks between your own folders via right-click "Move to Folder...".
 - **Open a whole folder at once** — right-click a bookmark folder to open every file inside it.
 - **Tree or flat list** — toggle the sidebar view from the title bar to match how you think.
