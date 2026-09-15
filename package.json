@@ -70,6 +70,12 @@
         "icon": "$(bookmark)"
       },
       {
+        "command": "workspace-file-bookmarks.addBookmarkForSelection",
+        "title": "Bookmark Line/Selection",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(bookmark)"
+      },
+      {
         "command": "workspace-file-bookmarks.addBookmarkFromExplorer",
         "title": "Add Bookmark",
         "category": "Workspace File Bookmarks"
@@ -266,6 +272,13 @@
         {
           "command": "workspace-file-bookmarks.addBookmark",
           "group": "navigation",
+          "when": "resourceScheme == file"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "workspace-file-bookmarks.addBookmarkForSelection",
+          "group": "6_bookmark",
           "when": "resourceScheme == file"
         }
       ],

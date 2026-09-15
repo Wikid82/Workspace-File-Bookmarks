@@ -6,6 +6,7 @@ import {
   describeBookmark,
   eligibleParentFolders,
   folderBreadcrumb,
+  formatLineRange,
   folderSubtreeHeight,
   isDescendantFolder,
   matchesSearchFilter,
@@ -52,6 +53,23 @@ describe('BookmarkStore', () => {
     const all = store.getAllBookmarks();
     expect(all).toHaveLength(1);
     expect(all[0].id).toBe('a');
+  });
+
+  it('does not add a duplicate bookmark for the same uri and line range', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'a', lineStart: 12, lineEnd: 12 }));
+    store.addBookmark(makeBookmark({ id: 'b', lineStart: 12, lineEnd: 12 }));
+    const all = store.getAllBookmarks();
+    expect(all).toHaveLength(1);
+    expect(all[0].id).toBe('a');
+  });
+
+  it('allows bookmarking the same uri at different line ranges', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'a' }));
+    store.addBookmark(makeBookmark({ id: 'b', lineStart: 12, lineEnd: 12 }));
+    store.addBookmark(makeBookmark({ id: 'c', lineStart: 20, lineEnd: 25 }));
+    expect(store.getAllBookmarks()).toHaveLength(3);
   });
 
   it('removes a bookmark by id', () => {
@@ -223,6 +241,38 @@ describe('describeBookmark', () => {
       tags: [],
     });
     expect(describeBookmark(tagged, false, null)).toEqual(['src/a.ts']);
+  });
+
+  it('appends the line for a single-line bookmark', () => {
+    const lineBookmark = makeBookmark({
+      workspaceFolderName: 'repo-a',
+      relativePath: 'src/a.ts',
+      lineStart: 12,
+      lineEnd: 12,
+    });
+    expect(describeBookmark(lineBookmark, false, null)).toEqual(['src/a.ts', 'L12']);
+  });
+
+  it('appends the range for a multi-line bookmark, before the tags segment', () => {
+    const rangeBookmark = makeBookmark({
+      workspaceFolderName: 'repo-a',
+      relativePath: 'src/a.ts',
+      lineStart: 12,
+      lineEnd: 18,
+      tags: ['auth'],
+    });
+    expect(describeBookmark(rangeBookmark, false, null)).toEqual(['src/a.ts', 'L12-18', '#auth']);
+  });
+});
+
+describe('formatLineRange', () => {
+  it('formats a single line as "L{n}"', () => {
+    expect(formatLineRange({ lineStart: 5 })).toBe('L5');
+    expect(formatLineRange({ lineStart: 5, lineEnd: 5 })).toBe('L5');
+  });
+
+  it('formats a multi-line span as "L{start}-{end}"', () => {
+    expect(formatLineRange({ lineStart: 5, lineEnd: 9 })).toBe('L5-9');
   });
 });
 
