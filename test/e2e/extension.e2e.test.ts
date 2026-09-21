@@ -44,6 +44,7 @@ describe('Workspace File Bookmarks (e2e)', () => {
 
     for (const id of [
       'workspace-file-bookmarks.addBookmark',
+      'workspace-file-bookmarks.addBookmarkForSelection',
       'workspace-file-bookmarks.addBookmarkFromExplorer',
       'workspace-file-bookmarks.addBookmarkToFolder',
       'workspace-file-bookmarks.removeBookmark',
@@ -82,6 +83,33 @@ describe('Workspace File Bookmarks (e2e)', () => {
     const children = provider.getChildren() as BookmarkTreeItem[];
     assert.equal(children.length, 1);
     assert.equal(children[0].bookmark.relativePath, 'src/sample-a.ts');
+  });
+
+  it('bookmarks a line range via addBookmarkForSelection, shows it in the tree, and restores the selection on open', async () => {
+    const { store, provider } = await getApi();
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-multiline.ts'));
+    const editor = await vscode.window.showTextDocument(document);
+    editor.selection = new vscode.Selection(new vscode.Position(4, 0), new vscode.Position(5, 1));
+
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmarkForSelection');
+
+    const bookmarks = store.getAllBookmarks();
+    assert.equal(bookmarks.length, 1);
+    assert.equal(bookmarks[0].relativePath, 'src/sample-multiline.ts');
+    assert.equal(bookmarks[0].lineStart, 5);
+    assert.equal(bookmarks[0].lineEnd, 6);
+    assert.equal(bookmarks[0].label, 'sample-multiline.ts:L5-6');
+
+    const [item] = provider.getChildren() as BookmarkTreeItem[];
+    assert.ok(item.description?.toString().includes('L5-6'));
+
+    editor.selection = new vscode.Selection(new vscode.Position(0, 0), new vscode.Position(0, 0));
+    await vscode.commands.executeCommand('workspace-file-bookmarks.openBookmark', item.bookmark);
+
+    const activeEditor = vscode.window.activeTextEditor;
+    assert.ok(activeEditor);
+    assert.equal(activeEditor.selection.start.line, 4);
+    assert.equal(activeEditor.selection.end.line, 5);
   });
 
   it('removes a bookmark via the removeBookmark command', async () => {

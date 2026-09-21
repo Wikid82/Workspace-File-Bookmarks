@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   BookmarkStore,
   addActiveFileBookmark,
+  addActiveSelectionBookmark,
   addBookmarksForUris,
   addBookmarksToFolder,
   createFolder,
@@ -22,7 +23,7 @@ import {
   type BookmarkFolder,
 } from '../extension';
 import { createFakeContext } from './fakeContext';
-import { Uri, window, workspace } from './vscode-mock';
+import { Position, Selection, Uri, window, workspace } from './vscode-mock';
 import type { InputBox } from './vscode-mock';
 
 function newStore() {
@@ -50,7 +51,10 @@ describe('addActiveFileBookmark', () => {
   it('bookmarks the active editor document', () => {
     const store = newStore();
     workspace.getWorkspaceFolder.mockReturnValue(undefined);
-    window.activeTextEditor = { document: { uri: Uri.file('/repo/a.ts') } };
+    window.activeTextEditor = {
+      document: { uri: Uri.file('/repo/a.ts') },
+      selection: new Selection(new Position(0, 0), new Position(0, 0)),
+    };
 
     addActiveFileBookmark(store);
 
@@ -65,6 +69,72 @@ describe('addActiveFileBookmark', () => {
 
     expect(window.showWarningMessage).toHaveBeenCalledOnce();
     expect(store.getAllBookmarks()).toHaveLength(0);
+  });
+});
+
+describe('addActiveSelectionBookmark', () => {
+  it('bookmarks a single line when the cursor has no selection', () => {
+    const store = newStore();
+    workspace.getWorkspaceFolder.mockReturnValue(undefined);
+    workspace.asRelativePath.mockReturnValue('a.ts');
+    window.activeTextEditor = {
+      document: { uri: Uri.file('/repo/a.ts') },
+      selection: new Selection(new Position(11, 0), new Position(11, 0)),
+    };
+
+    addActiveSelectionBookmark(store);
+
+    const [bookmark] = store.getAllBookmarks();
+    expect(bookmark.lineStart).toBe(12);
+    expect(bookmark.lineEnd).toBe(12);
+    expect(bookmark.label).toBe('a.ts:L12');
+  });
+
+  it('bookmarks the full line range for a multi-line selection', () => {
+    const store = newStore();
+    workspace.getWorkspaceFolder.mockReturnValue(undefined);
+    workspace.asRelativePath.mockReturnValue('a.ts');
+    window.activeTextEditor = {
+      document: { uri: Uri.file('/repo/a.ts') },
+      selection: new Selection(new Position(11, 2), new Position(17, 4)),
+    };
+
+    addActiveSelectionBookmark(store);
+
+    const [bookmark] = store.getAllBookmarks();
+    expect(bookmark.lineStart).toBe(12);
+    expect(bookmark.lineEnd).toBe(18);
+    expect(bookmark.label).toBe('a.ts:L12-18');
+  });
+
+  it('warns and does nothing when no file is open', () => {
+    const store = newStore();
+    window.activeTextEditor = undefined;
+
+    addActiveSelectionBookmark(store);
+
+    expect(window.showWarningMessage).toHaveBeenCalledOnce();
+    expect(store.getAllBookmarks()).toHaveLength(0);
+  });
+
+  it('allows bookmarking the same file at a different line range', () => {
+    const store = newStore();
+    workspace.getWorkspaceFolder.mockReturnValue(undefined);
+    workspace.asRelativePath.mockReturnValue('a.ts');
+    window.activeTextEditor = {
+      document: { uri: Uri.file('/repo/a.ts') },
+      selection: new Selection(new Position(0, 0), new Position(0, 0)),
+    };
+    addActiveFileBookmark(store);
+
+    window.activeTextEditor = {
+      document: { uri: Uri.file('/repo/a.ts') },
+      selection: new Selection(new Position(4, 0), new Position(4, 0)),
+    };
+    addActiveSelectionBookmark(store);
+
+    expect(store.getAllBookmarks()).toHaveLength(2);
+    expect(window.showInformationMessage).not.toHaveBeenCalled();
   });
 });
 
@@ -116,6 +186,30 @@ describe('openBookmark', () => {
     await openBookmark(makeBookmark());
 
     expect(window.showErrorMessage).toHaveBeenCalledOnce();
+  });
+
+  it('reveals and selects the line range for a line/selection bookmark', async () => {
+    const document = {};
+    workspace.openTextDocument.mockResolvedValue(document);
+    const editor = { selection: undefined as unknown, revealRange: vi.fn() };
+    window.showTextDocument.mockResolvedValue(editor as any);
+
+    await openBookmark(makeBookmark({ lineStart: 12, lineEnd: 18 }));
+
+    expect(editor.revealRange).toHaveBeenCalledOnce();
+    expect(editor.selection).toBeDefined();
+  });
+
+  it('does not touch the selection for a whole-file bookmark', async () => {
+    const document = {};
+    workspace.openTextDocument.mockResolvedValue(document);
+    const editor = { selection: undefined as unknown, revealRange: vi.fn() };
+    window.showTextDocument.mockResolvedValue(editor as any);
+
+    await openBookmark(makeBookmark());
+
+    expect(editor.revealRange).not.toHaveBeenCalled();
+    expect(editor.selection).toBeUndefined();
   });
 });
 
