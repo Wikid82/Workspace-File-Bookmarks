@@ -147,6 +147,8 @@ export const window = {
   showErrorMessage: vi.fn(),
   showInputBox: vi.fn(),
   showQuickPick: vi.fn(),
+  showSaveDialog: vi.fn(),
+  showOpenDialog: vi.fn(),
   showTextDocument: vi.fn(() => ({
     selection: undefined,
     revealRange: vi.fn(),
@@ -160,6 +162,10 @@ export const workspace = {
   getWorkspaceFolder: vi.fn(),
   asRelativePath: vi.fn((uri: Uri) => uri.fsPath),
   openTextDocument: vi.fn(),
+  fs: {
+    readFile: vi.fn(),
+    writeFile: vi.fn(),
+  },
 };
 
 export const commands = {

@@ -1,4 +1,5 @@
 import * as assert from 'node:assert/strict';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import type { BookmarkTreeItem, ExtensionApi, FolderGroupItem } from '../../extension';
@@ -64,6 +65,8 @@ describe('Workspace File Bookmarks (e2e)', () => {
       'workspace-file-bookmarks.openAllInFolder',
       'workspace-file-bookmarks.setViewModeList',
       'workspace-file-bookmarks.setViewModeTree',
+      'workspace-file-bookmarks.exportBookmarks',
+      'workspace-file-bookmarks.importBookmarks',
     ]) {
       assert.ok(commands.includes(id), `expected command "${id}" to be registered`);
     }
@@ -228,5 +231,50 @@ describe('Workspace File Bookmarks (e2e)', () => {
     provider.handleDrag([childNode], dataTransfer);
     await provider.handleDrop(undefined, dataTransfer);
     assert.equal(store.getAllFolders().find((f) => f.id === child.id)?.parentId, null);
+  });
+
+  it('round-trips bookmarks and folders through exportBookmarks and importBookmarks', async () => {
+    const { store } = await getApi();
+    const folder = store.createFolder('Backend');
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    store.moveBookmarkToFolder(store.getAllBookmarks()[0].id, folder.id);
+    const exportUri = vscode.Uri.file(path.join(os.tmpdir(), `wfb-e2e-export-${Date.now()}.json`));
+
+    const originalShowSaveDialog = vscode.window.showSaveDialog;
+    const originalShowOpenDialog = vscode.window.showOpenDialog;
+    const originalShowQuickPick = vscode.window.showQuickPick;
+    try {
+      (vscode.window as any).showSaveDialog = async () => exportUri;
+      await vscode.commands.executeCommand('workspace-file-bookmarks.exportBookmarks');
+
+      const written = JSON.parse(
+        Buffer.from(await vscode.workspace.fs.readFile(exportUri)).toString('utf8'),
+      );
+      assert.equal(written.bookmarks.length, 1);
+      assert.equal(written.folders.length, 1);
+
+      for (const bookmark of store.getAllBookmarks()) {
+        store.removeBookmark(bookmark.id);
+      }
+      for (const existingFolder of store.getAllFolders()) {
+        store.deleteFolder(existingFolder.id);
+      }
+
+      (vscode.window as any).showOpenDialog = async () => [exportUri];
+      (vscode.window as any).showQuickPick = async () => 'Merge with existing bookmarks';
+      await vscode.commands.executeCommand('workspace-file-bookmarks.importBookmarks');
+
+      assert.equal(store.getAllBookmarks().length, 1);
+      assert.equal(store.getAllFolders().length, 1);
+      assert.equal(store.getAllBookmarks()[0].relativePath, 'src/sample-a.ts');
+      assert.equal(store.getAllFolders()[0].name, 'Backend');
+    } finally {
+      vscode.window.showSaveDialog = originalShowSaveDialog;
+      vscode.window.showOpenDialog = originalShowOpenDialog;
+      vscode.window.showQuickPick = originalShowQuickPick;
+      await vscode.workspace.fs.delete(exportUri);
+    }
   });
 });
