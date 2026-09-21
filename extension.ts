@@ -174,6 +174,27 @@ export function folderBreadcrumb(folders: BookmarkFolder[], folderId: string): s
   return parts.join(' › ');
 }
 
+/** Shape written by `exportBookmarks` and read back by `importBookmarks`. */
+export interface BookmarkExportData {
+  version: 1;
+  exportedAt: string;
+  bookmarks: Bookmark[];
+  folders: BookmarkFolder[];
+}
+
+function isBookmarkExportData(data: unknown): data is BookmarkExportData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    Array.isArray((data as BookmarkExportData).bookmarks) &&
+    Array.isArray((data as BookmarkExportData).folders)
+  );
+}
+
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 /** The extension's public API, returned from `activate()` — used by e2e tests to inspect state that isn't reachable through the tree view UI alone. */
 export interface ExtensionApi {
   store: BookmarkStore;
@@ -279,6 +300,12 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('workspace-file-bookmarks.setViewModeTree', () =>
       provider.setViewMode('tree'),
     ),
+    vscode.commands.registerCommand('workspace-file-bookmarks.exportBookmarks', () =>
+      exportBookmarks(store),
+    ),
+    vscode.commands.registerCommand('workspace-file-bookmarks.importBookmarks', () =>
+      importBookmarks(store),
+    ),
   );
 
   return { store, provider };
@@ -365,7 +392,7 @@ export class BookmarkStore {
 
   createFolder(name: string, parentId: string | null = null): BookmarkFolder {
     const folder: BookmarkFolder = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: generateId(),
       name,
       createdAt: Date.now(),
       parentId,
@@ -392,6 +419,49 @@ export class BookmarkStore {
     this.setBookmarks(
       this.getAllBookmarks().map((b) => (b.folderId === id ? { ...b, folderId: null } : b)),
     );
+  }
+
+  /** Replaces all bookmarks and folders wholesale, e.g. importing over the existing set. */
+  replaceAll(bookmarks: Bookmark[], folders: BookmarkFolder[]) {
+    this.setFolders(folders);
+    this.setBookmarks(bookmarks);
+  }
+
+  /**
+   * Merges an imported bookmark/folder set into the existing store, appending rather than
+   * replacing. Every imported folder and bookmark gets a freshly generated id (and folder ids
+   * on both folders and bookmarks are remapped to match) so imported ids never collide with
+   * local ones; the imported folder hierarchy itself is preserved as-is. Bookmarks that already
+   * exist at the same uri/line range are skipped, mirroring `addBookmark`'s de-dupe.
+   */
+  mergeImport(
+    importedBookmarks: Bookmark[],
+    importedFolders: BookmarkFolder[],
+  ): { addedBookmarks: number; addedFolders: number } {
+    const folderIdMap = new Map<string, string>(importedFolders.map((f) => [f.id, generateId()]));
+    const remapFolderId = (id: string | null | undefined): string | null =>
+      (id && folderIdMap.get(id)) ?? null;
+
+    const newFolders = importedFolders.map((folder) => ({
+      ...folder,
+      id: folderIdMap.get(folder.id) as string,
+      parentId: remapFolderId(folder.parentId),
+    }));
+
+    const existingBookmarks = this.getAllBookmarks();
+    const newBookmarks = importedBookmarks
+      .filter(
+        (b) =>
+          !existingBookmarks.some(
+            (e) => e.uri === b.uri && e.lineStart === b.lineStart && e.lineEnd === b.lineEnd,
+          ),
+      )
+      .map((b) => ({ ...b, id: generateId(), folderId: remapFolderId(b.folderId) }));
+
+    this.setFolders([...this.getAllFolders(), ...newFolders]);
+    this.setBookmarks([...newBookmarks, ...existingBookmarks]);
+
+    return { addedBookmarks: newBookmarks.length, addedFolders: newFolders.length };
   }
 
   private setBookmarks(bookmarks: Bookmark[]) {
@@ -651,7 +721,7 @@ export function toBookmark(uri: vscode.Uri, selection?: LineSelection): Bookmark
   const label = selection ? `${fileName}:${formatLineRange(selection)}` : fileName;
 
   return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: generateId(),
     uri: uri.toString(),
     label,
     relativePath,
@@ -1069,6 +1139,95 @@ export async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem)
     return;
   }
   store.moveBookmarkToFolder(item.bookmark.id, folderId);
+}
+
+/** Writes all bookmarks and folders to a JSON file the user picks via a save dialog. */
+export async function exportBookmarks(store: BookmarkStore): Promise<void> {
+  const data: BookmarkExportData = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    bookmarks: store.getAllBookmarks(),
+    folders: store.getAllFolders(),
+  };
+
+  const uri = await vscode.window.showSaveDialog({
+    filters: { JSON: ['json'] },
+    saveLabel: 'Export Bookmarks',
+    defaultUri: vscode.Uri.file('workspace-file-bookmarks.json'),
+  });
+  if (!uri) {
+    return;
+  }
+
+  try {
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(JSON.stringify(data, null, 2), 'utf8'));
+    vscode.window.showInformationMessage(
+      `Exported ${data.bookmarks.length} bookmark(s) and ${data.folders.length} folder(s).`,
+    );
+  } catch {
+    vscode.window.showErrorMessage('Could not write the export file.');
+  }
+}
+
+const IMPORT_MERGE_PICK = 'Merge with existing bookmarks';
+const IMPORT_REPLACE_PICK = 'Replace existing bookmarks';
+
+/**
+ * Reads bookmarks and folders from a JSON file the user picks via an open dialog, then either
+ * merges them into the current store or (after a confirmation, since it's destructive) replaces
+ * the current store outright.
+ */
+export async function importBookmarks(store: BookmarkStore): Promise<void> {
+  const uris = await vscode.window.showOpenDialog({
+    filters: { JSON: ['json'] },
+    canSelectMany: false,
+    openLabel: 'Import Bookmarks',
+  });
+  const uri = uris?.[0];
+  if (!uri) {
+    return;
+  }
+
+  let data: unknown;
+  try {
+    const bytes = await vscode.workspace.fs.readFile(uri);
+    data = JSON.parse(Buffer.from(bytes).toString('utf8'));
+  } catch {
+    vscode.window.showErrorMessage('Could not read or parse the import file.');
+    return;
+  }
+  if (!isBookmarkExportData(data)) {
+    vscode.window.showErrorMessage('That file is not a valid Workspace File Bookmarks export.');
+    return;
+  }
+
+  const mode = await vscode.window.showQuickPick([IMPORT_MERGE_PICK, IMPORT_REPLACE_PICK], {
+    placeHolder: `Import ${data.bookmarks.length} bookmark(s) and ${data.folders.length} folder(s)`,
+  });
+  if (!mode) {
+    return;
+  }
+
+  if (mode === IMPORT_REPLACE_PICK) {
+    const confirm = await vscode.window.showWarningMessage(
+      'Replace all existing bookmarks and folders with the imported set? This cannot be undone.',
+      { modal: true },
+      'Replace',
+    );
+    if (confirm !== 'Replace') {
+      return;
+    }
+    store.replaceAll(data.bookmarks, data.folders);
+    vscode.window.showInformationMessage(
+      `Imported ${data.bookmarks.length} bookmark(s) and ${data.folders.length} folder(s).`,
+    );
+    return;
+  }
+
+  const { addedBookmarks, addedFolders } = store.mergeImport(data.bookmarks, data.folders);
+  vscode.window.showInformationMessage(
+    `Merged ${addedBookmarks} bookmark(s) and ${addedFolders} folder(s); duplicates were skipped.`,
+  );
 }
 
 export async function addBookmarksToFolder(

@@ -176,6 +176,18 @@
         "title": "View as Tree",
         "category": "Workspace File Bookmarks",
         "icon": "$(list-tree)"
+      },
+      {
+        "command": "workspace-file-bookmarks.exportBookmarks",
+        "title": "Export Bookmarks...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(export)"
+      },
+      {
+        "command": "workspace-file-bookmarks.importBookmarks",
+        "title": "Import Bookmarks...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(desktop-download)"
       }
     ],
     "menus": {
@@ -219,6 +231,16 @@
           "command": "workspace-file-bookmarks.setViewModeTree",
           "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == list",
           "group": "navigation@5"
+        },
+        {
+          "command": "workspace-file-bookmarks.exportBookmarks",
+          "when": "view == workspace-file-bookmarks-view",
+          "group": "9_data@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.importBookmarks",
+          "when": "view == workspace-file-bookmarks-view",
+          "group": "9_data@2"
         }
       ],
       "view/item/context": [
