@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.9.1...workspace-file-bookmarks-v1.10.0) (2026-09-21)
+
+
+### Features
+
+* bookmark a specific line or selection, not just a whole file ([b1bfee2](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/b1bfee2c40cee9010723134de8ca8a7699ce8e0e))
+* bookmark a specific line or selection, not just a whole file ([#90](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/90)) ([7a5fe9e](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/7a5fe9ec0fde3106fa0985e69015e67e12c49986))
+
 ## [1.9.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.9.0...workspace-file-bookmarks-v1.9.1) (2026-09-14)
 
 
