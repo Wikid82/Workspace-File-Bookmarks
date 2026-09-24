@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/Wikid82/Workspace-File-Bookmarks#readme",
   "engines": {
-    "vscode": "^1.138.0"
+    "vscode": "^1.139.0"
   },
   "activationEvents": [],
   "main": "./dist/extension.cjs",
@@ -360,7 +360,7 @@
     "prettier": "^3.9.9",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.70.1",
-    "vite": "^8.3.0",
+    "vite": "^8.3.1",
     "vitest": "^5.0.1"
   }
 }
