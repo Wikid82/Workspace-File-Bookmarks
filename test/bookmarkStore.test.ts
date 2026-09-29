@@ -416,3 +416,68 @@ describe('folderBreadcrumb', () => {
     expect(folderBreadcrumb([], 'missing')).toBe('');
   });
 });
+
+describe('replaceAll', () => {
+  it('discards the existing bookmarks and folders and stores the given ones', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'old' }));
+    store.createFolder('Old Folder');
+
+    store.replaceAll(
+      [makeBookmark({ id: 'new', uri: 'file:///repo/src/b.ts' })],
+      [{ id: 'f1', name: 'New Folder', createdAt: 1 }],
+    );
+
+    expect(store.getAllBookmarks().map((b) => b.id)).toEqual(['new']);
+    expect(store.getAllFolders().map((f) => f.id)).toEqual(['f1']);
+  });
+});
+
+describe('mergeImport', () => {
+  it('appends imported bookmarks and folders under freshly generated ids', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'existing' }));
+
+    const result = store.mergeImport(
+      [makeBookmark({ id: 'imported', uri: 'file:///repo/src/b.ts', folderId: 'imported-folder' })],
+      [{ id: 'imported-folder', name: 'Imported', createdAt: 1 }],
+    );
+
+    expect(result).toEqual({ addedBookmarks: 1, addedFolders: 1 });
+    const bookmarks = store.getAllBookmarks();
+    expect(bookmarks).toHaveLength(2);
+    const imported = bookmarks.find((b) => b.uri === 'file:///repo/src/b.ts')!;
+    expect(imported.id).not.toBe('imported');
+    const folders = store.getAllFolders();
+    expect(folders).toHaveLength(1);
+    expect(folders[0].id).not.toBe('imported-folder');
+    expect(imported.folderId).toBe(folders[0].id);
+  });
+
+  it('remaps parentId references within the imported folder hierarchy', () => {
+    const store = newStore();
+
+    store.mergeImport(
+      [],
+      [
+        { id: 'parent', name: 'Parent', createdAt: 1 },
+        { id: 'child', name: 'Child', createdAt: 2, parentId: 'parent' },
+      ],
+    );
+
+    const folders = store.getAllFolders();
+    const parent = folders.find((f) => f.name === 'Parent')!;
+    const child = folders.find((f) => f.name === 'Child')!;
+    expect(child.parentId).toBe(parent.id);
+  });
+
+  it('skips bookmarks that already exist at the same uri and line range', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'existing', lineStart: 5, lineEnd: 5 }));
+
+    const result = store.mergeImport([makeBookmark({ id: 'dup', lineStart: 5, lineEnd: 5 })], []);
+
+    expect(result).toEqual({ addedBookmarks: 0, addedFolders: 0 });
+    expect(store.getAllBookmarks()).toHaveLength(1);
+  });
+});

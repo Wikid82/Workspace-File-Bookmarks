@@ -9,8 +9,10 @@ import {
   createSubfolder,
   deleteFolder,
   editBookmarkTags,
+  exportBookmarks,
   filterBookmarks,
   filterByTag,
+  importBookmarks,
   moveFolderToParent,
   moveToFolder,
   openAllInFolder,
@@ -767,5 +769,150 @@ describe('addBookmarksToFolder', () => {
     await addBookmarksToFolder(store, Uri.file('/repo/a.ts') as any, undefined);
 
     expect(store.getAllBookmarks()).toHaveLength(0);
+  });
+});
+
+describe('exportBookmarks', () => {
+  it('writes bookmarks and folders to the picked file', async () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'a' }));
+    store.createFolder('Backend');
+    const uri = Uri.file('/tmp/export.json');
+    window.showSaveDialog.mockResolvedValue(uri);
+
+    await exportBookmarks(store);
+
+    expect(workspace.fs.writeFile).toHaveBeenCalledOnce();
+    const [writtenUri, bytes] = workspace.fs.writeFile.mock.calls[0];
+    expect(writtenUri).toBe(uri);
+    const data = JSON.parse(Buffer.from(bytes).toString('utf8'));
+    expect(data.bookmarks).toHaveLength(1);
+    expect(data.folders).toHaveLength(1);
+    expect(window.showInformationMessage).toHaveBeenCalledOnce();
+  });
+
+  it('does nothing when the save dialog is cancelled', async () => {
+    const store = newStore();
+    window.showSaveDialog.mockResolvedValue(undefined);
+
+    await exportBookmarks(store);
+
+    expect(workspace.fs.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('shows an error if writing fails', async () => {
+    const store = newStore();
+    window.showSaveDialog.mockResolvedValue(Uri.file('/tmp/export.json'));
+    workspace.fs.writeFile.mockRejectedValue(new Error('disk full'));
+
+    await exportBookmarks(store);
+
+    expect(window.showErrorMessage).toHaveBeenCalledOnce();
+  });
+});
+
+describe('importBookmarks', () => {
+  function mockFileContents(data: unknown) {
+    workspace.fs.readFile.mockResolvedValue(Buffer.from(JSON.stringify(data), 'utf8'));
+  }
+
+  it('does nothing when the open dialog is cancelled', async () => {
+    const store = newStore();
+    window.showOpenDialog.mockResolvedValue(undefined);
+
+    await importBookmarks(store);
+
+    expect(workspace.fs.readFile).not.toHaveBeenCalled();
+  });
+
+  it('shows an error when the file cannot be read or parsed', async () => {
+    const store = newStore();
+    window.showOpenDialog.mockResolvedValue([Uri.file('/tmp/import.json')]);
+    workspace.fs.readFile.mockRejectedValue(new Error('not found'));
+
+    await importBookmarks(store);
+
+    expect(window.showErrorMessage).toHaveBeenCalledOnce();
+  });
+
+  it('shows an error when the file is not a valid export', async () => {
+    const store = newStore();
+    window.showOpenDialog.mockResolvedValue([Uri.file('/tmp/import.json')]);
+    mockFileContents({ foo: 'bar' });
+
+    await importBookmarks(store);
+
+    expect(window.showErrorMessage).toHaveBeenCalledOnce();
+    expect(store.getAllBookmarks()).toHaveLength(0);
+  });
+
+  it('does nothing when the merge/replace picker is cancelled', async () => {
+    const store = newStore();
+    window.showOpenDialog.mockResolvedValue([Uri.file('/tmp/import.json')]);
+    mockFileContents({ version: 1, exportedAt: '', bookmarks: [makeBookmark()], folders: [] });
+    window.showQuickPick.mockResolvedValue(undefined);
+
+    await importBookmarks(store);
+
+    expect(store.getAllBookmarks()).toHaveLength(0);
+  });
+
+  it('merges imported bookmarks and folders into the existing store', async () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'existing' }));
+    window.showOpenDialog.mockResolvedValue([Uri.file('/tmp/import.json')]);
+    mockFileContents({
+      version: 1,
+      exportedAt: '',
+      bookmarks: [makeBookmark({ id: 'imported', uri: 'file:///repo/src/b.ts' })],
+      folders: [makeFolder({ id: 'f1' })],
+    });
+    window.showQuickPick.mockResolvedValue('Merge with existing bookmarks');
+
+    await importBookmarks(store);
+
+    expect(store.getAllBookmarks()).toHaveLength(2);
+    expect(store.getAllFolders()).toHaveLength(1);
+    expect(window.showInformationMessage).toHaveBeenCalledOnce();
+  });
+
+  it('replaces the store after confirmation', async () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'existing' }));
+    window.showOpenDialog.mockResolvedValue([Uri.file('/tmp/import.json')]);
+    mockFileContents({
+      version: 1,
+      exportedAt: '',
+      bookmarks: [makeBookmark({ id: 'imported' })],
+      folders: [],
+    });
+    window.showQuickPick.mockResolvedValue('Replace existing bookmarks');
+    window.showWarningMessage.mockResolvedValue('Replace');
+
+    await importBookmarks(store);
+
+    const bookmarks = store.getAllBookmarks();
+    expect(bookmarks).toHaveLength(1);
+    expect(bookmarks[0].id).toBe('imported');
+  });
+
+  it('does not replace when the confirmation is declined', async () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'existing' }));
+    window.showOpenDialog.mockResolvedValue([Uri.file('/tmp/import.json')]);
+    mockFileContents({
+      version: 1,
+      exportedAt: '',
+      bookmarks: [makeBookmark({ id: 'imported' })],
+      folders: [],
+    });
+    window.showQuickPick.mockResolvedValue('Replace existing bookmarks');
+    window.showWarningMessage.mockResolvedValue(undefined);
+
+    await importBookmarks(store);
+
+    const bookmarks = store.getAllBookmarks();
+    expect(bookmarks).toHaveLength(1);
+    expect(bookmarks[0].id).toBe('existing');
   });
 });

@@ -176,6 +176,18 @@
         "title": "View as Tree",
         "category": "Workspace File Bookmarks",
         "icon": "$(list-tree)"
+      },
+      {
+        "command": "workspace-file-bookmarks.exportBookmarks",
+        "title": "Export Bookmarks...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(export)"
+      },
+      {
+        "command": "workspace-file-bookmarks.importBookmarks",
+        "title": "Import Bookmarks...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(desktop-download)"
       }
     ],
     "menus": {
@@ -219,6 +231,16 @@
           "command": "workspace-file-bookmarks.setViewModeTree",
           "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == list",
           "group": "navigation@5"
+        },
+        {
+          "command": "workspace-file-bookmarks.exportBookmarks",
+          "when": "view == workspace-file-bookmarks-view",
+          "group": "9_data@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.importBookmarks",
+          "when": "view == workspace-file-bookmarks-view",
+          "group": "9_data@2"
         }
       ],
       "view/item/context": [
@@ -320,14 +342,14 @@
   },
   "overrides": {
     "diff": "^9.0.0",
-    "serialize-javascript": "^7.1.1"
+    "serialize-javascript": "^7.1.2"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.3",
     "@types/vscode": "^1.138.0",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@vitest/coverage-v8": "^5.0.2",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
@@ -335,10 +357,10 @@
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "lefthook": "^2.1.14",
-    "prettier": "^3.9.8",
+    "prettier": "^3.9.9",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.70.0",
-    "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "typescript-eslint": "^8.71.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
   }
 }
