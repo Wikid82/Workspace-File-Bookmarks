@@ -144,7 +144,7 @@ jobs:
       - name: Publish to Visual Studio Marketplace
         if: ${{ env.VS_MARKETPLACE_TOKEN != '' }}
         continue-on-error: true
-        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2
+        uses: HaaLeo/publish-vscode-extension@1b8df468b849f76a143b8c18bf0ffa2075398d12 # v2
         with:
           pat: ${{ env.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
@@ -153,7 +153,7 @@ jobs:
       - name: Publish to Open VSX Registry
         if: ${{ env.OPEN_VSX_TOKEN != '' }}
         continue-on-error: true
-        uses: HaaLeo/publish-vscode-extension@ca5561daa085dee804bf9f37fe0165785a9b14db # v2
+        uses: HaaLeo/publish-vscode-extension@1b8df468b849f76a143b8c18bf0ffa2075398d12 # v2
         with:
           pat: ${{ env.OPEN_VSX_TOKEN }}
           registryUrl: https://open-vsx.org
