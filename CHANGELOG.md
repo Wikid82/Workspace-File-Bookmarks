@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.10.0...workspace-file-bookmarks-v1.11.0) (2026-09-29)
+
+
+### Features
+
+* import/export bookmarks as JSON ([#43](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/43)) ([22ab140](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/22ab1401ee6ea9373bbd21ce2856019be172e052))
+* import/export bookmarks as JSON ([#94](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/94)) ([6b1deb2](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/6b1deb241b9d83bbc005e5d4a959269018a0e6d3))
+
 ## [1.10.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.9.1...workspace-file-bookmarks-v1.10.0) (2026-09-21)
 
 
