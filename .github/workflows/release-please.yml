@@ -14,13 +14,14 @@ on:
         required: false
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
@@ -55,13 +56,22 @@ jobs:
         id: resolve
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_CREATED: ${{ needs.release-please.outputs.release_created }}
+          RP_TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+          RP_UPLOAD_URL: ${{ needs.release-please.outputs.upload_url }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REPO: ${{ github.repository }}
         run: |
-          if [ "${{ needs.release-please.outputs.release_created }}" = "true" ]; then
-            echo "tag=${{ needs.release-please.outputs.tag_name }}" >> "$GITHUB_OUTPUT"
-            echo "upload_url=${{ needs.release-please.outputs.upload_url }}" >> "$GITHUB_OUTPUT"
+          if [ "${RELEASE_CREATED}" = "true" ]; then
+            echo "tag=${RP_TAG_NAME}" >> "$GITHUB_OUTPUT"
+            echo "upload_url=${RP_UPLOAD_URL}" >> "$GITHUB_OUTPUT"
           else
-            TAG="${{ github.event.inputs.tag }}"
-            UPLOAD_URL=$(gh api "repos/${{ github.repository }}/releases/tags/${TAG}" --jq '.upload_url')
+            TAG="${INPUT_TAG}"
+            if ! [[ "${TAG}" =~ ^v[0-9A-Za-z._-]+$ ]]; then
+              echo "Invalid release tag: ${TAG}" >&2
+              exit 1
+            fi
+            UPLOAD_URL=$(gh api "repos/${REPO}/releases/tags/${TAG}" --jq '.upload_url')
             echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
             echo "upload_url=${UPLOAD_URL}" >> "$GITHUB_OUTPUT"
           fi
@@ -69,6 +79,7 @@ jobs:
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           ref: ${{ steps.resolve.outputs.tag }}
 
       - name: Setup Node.js
@@ -134,9 +145,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPLOAD_URL: ${{ steps.resolve.outputs.upload_url }}
+          REPO: ${{ github.repository }}
         run: |
           RELEASE_ID=$(echo "${UPLOAD_URL}" | sed -E 's#.*/releases/([0-9]+)/.*#\1#')
-          gh api -X PATCH "repos/${{ github.repository }}/releases/${RELEASE_ID}" -f draft=false
+          gh api -X PATCH "repos/${REPO}/releases/${RELEASE_ID}" -f draft=false
 
       # Publishes to the official VS Code Marketplace (skipped until VS_MARKETPLACE_TOKEN is set).
       # continue-on-error so a failure here (e.g. re-running on an already-published version)

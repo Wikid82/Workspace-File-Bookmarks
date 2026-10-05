@@ -5,13 +5,14 @@ on:
   schedule:
     - cron: '0 3 * * *' # daily at 03:00 UTC
 
-permissions:
-  contents: write # required to delete branch refs
-  pull-requests: read
+permissions: {}
 
 jobs:
   prune:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # required to delete branch refs
+      pull-requests: read
     concurrency:
       group: prune-renovate-branches
       cancel-in-progress: true
