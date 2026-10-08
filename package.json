@@ -356,7 +356,7 @@
     "esbuild": "^0.28.2",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
-    "lefthook": "^2.1.17",
+    "lefthook": "^2.2.0",
     "prettier": "^3.9.9",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.1",
