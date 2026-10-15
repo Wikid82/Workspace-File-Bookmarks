@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.11.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.11.0...workspace-file-bookmarks-v1.11.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **deps:** bump @types/node, prettier, and tinybench ([5141bfe](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/5141bfeda259f87adf90057e035f017f816d5e54))
+* **deps:** update qs to version 6.16.1 ([11afcbf](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/11afcbf18e5c2d5ee8e25e7e2ced5538f9657e25))
+* **scripts:** prioritize global npm bin dir on PATH after upgrade ([d898323](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/d8983237c67dcd00674a242092ec17df7c1976be))
+
 ## [1.11.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.10.0...workspace-file-bookmarks-v1.11.0) (2026-09-29)
 
 
