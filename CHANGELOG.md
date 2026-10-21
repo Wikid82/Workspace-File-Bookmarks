@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.2](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.11.1...workspace-file-bookmarks-v1.11.2) (2026-10-21)
+
+
+### Bug Fixes
+
+* **deps:** update vite to version 8.3.5 and postcss to version 8.5.30 ([0adc01d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/0adc01dc83e821d550ccc74a9f10e75a6177ed8a))
+
 ## [1.11.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.11.0...workspace-file-bookmarks-v1.11.1) (2026-10-15)
 
 
