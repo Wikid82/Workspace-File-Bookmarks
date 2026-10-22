@@ -27,7 +27,12 @@ jobs:
       tag_name: ${{ steps.release.outputs.tag_name }}
       upload_url: ${{ steps.release.outputs.upload_url }}
     steps:
-      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
+      - uses: step-security/release-please-action@26a11e1978efcda4d5c2834bd4c39a74a717cab6 # v4.4.1
         id: release
         with:
           config-file: release-please-config.json
@@ -52,6 +57,11 @@ jobs:
       # On a normal run, release-please just created the release and handed us its tag/upload_url
       # directly. On a manual re-run (release already exists, e.g. retrying after a packaging fix),
       # those outputs are empty, so look the release up by the tag the user supplied instead.
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        with:
+          egress-policy: audit
+
       - name: Resolve release tag and upload URL
         id: resolve
         env:
