@@ -34,6 +34,13 @@ bundled promotion still parses):
   `"hidden": true` is release-triggering; that's why `deps` bumps a version
   and `chore`/`ci` don't).
 
+## Git and Commit Guidelines
+
+- Do not append boilerplate text, disclaimers, or watermarks such as
+  "Claude Code helped produce this change." to commit messages, pull
+  request descriptions, or summaries.
+- Keep pull request summaries strictly focused on the changes introduced.
+
 ## Claude Code Attribution
 
 Commits and PRs may note that Claude Code was used (e.g. `Co-Authored-By:
