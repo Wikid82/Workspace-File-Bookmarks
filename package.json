@@ -341,8 +341,9 @@
     "test:e2e": "vscode-test"
   },
   "overrides": {
+    "@azure/msal-node": "^7.1.1",
     "diff": "^9.0.0",
-    "serialize-javascript": "^7.1.2"
+    "serialize-javascript": "^7.1.4"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
