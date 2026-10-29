@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/Wikid82/Workspace-File-Bookmarks#readme",
   "engines": {
-    "vscode": "^1.140.0"
+    "vscode": "^1.144.0"
   },
   "activationEvents": [],
   "main": "./dist/extension.cjs",
@@ -349,7 +349,7 @@
     "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.6.6",
-    "@types/vscode": "^1.140.0",
+    "@types/vscode": "^1.144.0",
     "@vitest/coverage-v8": "^5.0.5",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
