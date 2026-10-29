@@ -67,6 +67,7 @@ describe('Workspace File Bookmarks (e2e)', () => {
       'workspace-file-bookmarks.setViewModeTree',
       'workspace-file-bookmarks.exportBookmarks',
       'workspace-file-bookmarks.importBookmarks',
+      'workspace-file-bookmarks.goToBookmark',
     ]) {
       assert.ok(commands.includes(id), `expected command "${id}" to be registered`);
     }
@@ -275,6 +276,25 @@ describe('Workspace File Bookmarks (e2e)', () => {
       vscode.window.showOpenDialog = originalShowOpenDialog;
       vscode.window.showQuickPick = originalShowQuickPick;
       await vscode.workspace.fs.delete(exportUri);
+    }
+  });
+
+  it('opens a bookmark via the goToBookmark command quick pick', async () => {
+    const { store } = await getApi();
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    const bookmark = store.getAllBookmarks()[0];
+
+    const originalShowQuickPick = vscode.window.showQuickPick;
+    try {
+      (vscode.window as any).showQuickPick = async (items: any[]) =>
+        items.find((i) => i.bookmark?.id === bookmark.id);
+
+      await vscode.commands.executeCommand('workspace-file-bookmarks.goToBookmark');
+      assert.equal(vscode.window.activeTextEditor?.document.uri.fsPath, document.uri.fsPath);
+    } finally {
+      vscode.window.showQuickPick = originalShowQuickPick;
     }
   });
 });

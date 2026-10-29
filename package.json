@@ -188,6 +188,12 @@
         "title": "Import Bookmarks...",
         "category": "Workspace File Bookmarks",
         "icon": "$(desktop-download)"
+      },
+      {
+        "command": "workspace-file-bookmarks.goToBookmark",
+        "title": "Go to Bookmark...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(go-to-file)"
       }
     ],
     "menus": {
@@ -196,6 +202,11 @@
           "command": "workspace-file-bookmarks.addBookmark",
           "when": "view == workspace-file-bookmarks-view",
           "group": "navigation@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.goToBookmark",
+          "when": "view == workspace-file-bookmarks-view",
+          "group": "navigation@1.5"
         },
         {
           "command": "workspace-file-bookmarks.createFolder",

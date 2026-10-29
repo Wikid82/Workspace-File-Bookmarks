@@ -306,6 +306,9 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('workspace-file-bookmarks.importBookmarks', () =>
       importBookmarks(store),
     ),
+    vscode.commands.registerCommand('workspace-file-bookmarks.goToBookmark', () =>
+      goToBookmark(store),
+    ),
   );
 
   return { store, provider };
@@ -1249,5 +1252,37 @@ export async function addBookmarksToFolder(
   }
   for (const target of targets) {
     store.addBookmark({ ...toBookmark(target), folderId });
+  }
+}
+
+export interface BookmarkQuickPickItem extends vscode.QuickPickItem {
+  bookmark: Bookmark;
+}
+
+/** Opens a quick-pick listing all bookmarks, opening the selected one. */
+export async function goToBookmark(store: BookmarkStore): Promise<void> {
+  const bookmarks = store.getAllBookmarks();
+  if (bookmarks.length === 0) {
+    vscode.window.showInformationMessage('No bookmarks yet — add a bookmark first.');
+    return;
+  }
+  const isMultiRoot = (vscode.workspace.workspaceFolders?.length ?? 0) > 1;
+  const folders = store.getAllFolders();
+
+  const items: BookmarkQuickPickItem[] = bookmarks.map((b) => ({
+    label: b.label,
+    description: describeBookmark(
+      b,
+      isMultiRoot,
+      folderBreadcrumb(folders, b.folderId ?? '') || null,
+    ).join(' • '),
+    bookmark: b,
+  }));
+
+  const picked = await vscode.window.showQuickPick(items, {
+    placeHolder: 'Go to bookmark',
+  });
+  if (picked) {
+    await openBookmark(picked.bookmark);
   }
 }
