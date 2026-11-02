@@ -12,6 +12,7 @@ import {
   exportBookmarks,
   filterBookmarks,
   filterByTag,
+  goToBookmark,
   importBookmarks,
   moveFolderToParent,
   moveToFolder,
@@ -914,5 +915,41 @@ describe('importBookmarks', () => {
     const bookmarks = store.getAllBookmarks();
     expect(bookmarks).toHaveLength(1);
     expect(bookmarks[0].id).toBe('existing');
+  });
+});
+
+describe('goToBookmark', () => {
+  it('shows an information message when there are no bookmarks', async () => {
+    const store = newStore();
+
+    await goToBookmark(store);
+
+    expect(window.showInformationMessage).toHaveBeenCalledOnce();
+    expect(window.showQuickPick).not.toHaveBeenCalled();
+  });
+
+  it('shows quick pick and opens selected bookmark', async () => {
+    const store = newStore();
+    const bookmark = makeBookmark();
+    store.addBookmark(bookmark);
+    const quickPickItem = { label: bookmark.label, bookmark };
+    window.showQuickPick.mockResolvedValue(quickPickItem);
+    workspace.openTextDocument.mockResolvedValue({});
+
+    await goToBookmark(store);
+
+    expect(window.showQuickPick).toHaveBeenCalledOnce();
+    expect(workspace.openTextDocument).toHaveBeenCalledOnce();
+  });
+
+  it('does nothing when quick pick is cancelled', async () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark());
+    window.showQuickPick.mockResolvedValue(undefined);
+
+    await goToBookmark(store);
+
+    expect(window.showQuickPick).toHaveBeenCalledOnce();
+    expect(workspace.openTextDocument).not.toHaveBeenCalled();
   });
 });

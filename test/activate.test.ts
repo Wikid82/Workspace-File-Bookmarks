@@ -11,8 +11,8 @@ describe('activate', () => {
     activate(context as any);
 
     expect(window.createTreeView).toHaveBeenCalledOnce();
-    expect(commands.registerCommand).toHaveBeenCalledTimes(23);
-    expect((context as any).subscriptions).toHaveLength(24); // tree view + 23 commands
+    expect(commands.registerCommand).toHaveBeenCalledTimes(24);
+    expect((context as any).subscriptions).toHaveLength(25); // tree view + 24 commands
   });
 
   it('exercises every registered command handler at least once', async () => {
@@ -70,8 +70,10 @@ describe('activate', () => {
     await handlers.get('workspace-file-bookmarks.exportBookmarks')?.();
     window.showOpenDialog.mockResolvedValue(undefined);
     await handlers.get('workspace-file-bookmarks.importBookmarks')?.();
+    window.showQuickPick.mockResolvedValue(undefined);
+    await handlers.get('workspace-file-bookmarks.goToBookmark')?.();
 
-    expect(handlers.size).toBe(23);
+    expect(handlers.size).toBe(24);
   });
 });
 

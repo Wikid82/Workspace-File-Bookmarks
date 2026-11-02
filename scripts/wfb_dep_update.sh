@@ -49,7 +49,7 @@ for (( i=0; i<${#NPM_MODULES[@]}; i++ )); do
     # Exclude typescript: staying under v7 until there's a typescript-eslint
     # release with a v7-compatible API (no ESLint API support until 7.1):
     # https://github.com/typescript-eslint/typescript-eslint/issues/10940
-    npx --yes npm-check-updates -u --reject "typescript,@typescript-eslint/*"
+    npx --yes npm-check-updates -u
 
     # ncu only touches dependency ranges, not engines.vscode, so keep the
     # minimum supported VS Code version in lockstep with @types/vscode here.
