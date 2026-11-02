@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.12.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.11.2...workspace-file-bookmarks-v1.12.0) (2026-11-02)
+
+
+### Features
+
+* add 'Go to Bookmark' command and implement quick-pick functionality ([a53a80e](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/a53a80e79379e95b5b2d7f0d6c89a7e06b4a77b4))
+
+
+### Bug Fixes
+
+* **deps:** update @types/vscode and vscode engine version to 1.144.0 ([fe82544](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/fe82544dd6c15c00c0d1784aba2a551a2c9e4c9f))
+* **deps:** update eslint to version 10.14.0 ([4ab57c9](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/4ab57c982561237c1e231516b789981d612eff64))
+* **deps:** update TypeScript version to 7.1.0-dev.20261029.1 ([120a03b](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/120a03bbc427f113b72e1df6bd2f806a5af707cf))
+* **deps:** update TypeScript version to 7.1.0-dev.20261030.1 ([fe48fd5](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/fe48fd59637ddaa465e719b9e3c164fbd71ac510))
+* **deps:** update TypeScript version to 7.1.0-dev.20261031.1 ([d5bfc41](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/d5bfc41d16f6e627903493f7e5280f4d66a81f02))
+* **deps:** update TypeScript version to 7.1.0-dev.20261101.1 ([d8d404c](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/d8d404ccee3afa38d60ae72930f5b59615dd8485))
+
 ## [1.11.2](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.11.1...workspace-file-bookmarks-v1.11.2) (2026-10-21)
 
 
