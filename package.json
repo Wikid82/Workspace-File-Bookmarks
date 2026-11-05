@@ -361,7 +361,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.6.6",
     "@types/vscode": "^1.145.0",
-    "@typescript/native": "npm:typescript@^7.1.0-dev.20261104.1",
+    "@typescript/native": "npm:typescript@^7.1.0-dev.20261105.1",
     "@vitest/coverage-istanbul": "^5.1.0",
     "@vitest/coverage-v8": "^5.1.0",
     "@vitest/eslint-plugin": "^1.6.28",
