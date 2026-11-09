@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.12.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.12.0...workspace-file-bookmarks-v1.12.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **ci:** bump step-security/harden-runner to v2.22.4 ([2cdca2a](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/2cdca2a1c2b2bac36e0f0ce96536a4a34e33f9e3))
+* **ci:** update CodeQL action versions to v4.39.3 ([37e8ffc](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/37e8ffc786a88d2d27703cb27c1a36b25b7cf2d2))
+* **ci:** update step-security/harden-runner to v2.22.4 ([d449820](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/d449820ebeb9308665bf854a1eaff160ea5802a6))
+* **deps:** update @azure/msal-browser and @azure/msal-node to latest versions ([ccc1567](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/ccc15679a9cc464ff94d4cf86b4b56623b4433cf))
+* **deps:** update @azure/msal-node to version 7.2.0 ([d98c780](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/d98c780e99890260c9497b5689a7bbb9602be76e))
+* **deps:** update @types/vscode to version 1.145.0 and add script for updating ([779d8eb](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/779d8eb75f1a47a57bb6fc41f8a1dab4f413f519))
+* **deps:** update CodeQL action versions to v4.39.2 ([c64b8a2](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/c64b8a2685f245eaa8a3d6882fe0dce7639d01f3))
+* **deps:** update typescript dependency to version 7.1.0-dev.20261105.1 ([3956357](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/39563576170b4e78d393591a1f98df11c6ff92c1))
+* **deps:** update typescript dependency to version 7.1.0-dev.20261106.1 ([19ddc76](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/19ddc76934841b7dc02021c00d01dee6e08ed5a5))
+* **deps:** update typescript dependency to version 7.1.0-dev.20261107.1 ([9ee4bc6](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/9ee4bc60358b1dc96eaec76e7d67c2802caed6fd))
+* **deps:** update typescript dependency to version 7.1.0-dev.20261108.1 ([3346835](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/3346835c1a9c0b5c933599a510fe80c63e5f480d))
+* **deps:** update TypeScript version to 7.1.0-dev.20261103.1 ([f43e68f](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/f43e68fbec4ca94336fa131203f85c93ed2e6e8e))
+* **deps:** update TypeScript version to 7.1.0-dev.20261104.1 ([b7e4436](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/b7e44360d8f9fe64deef1a70e0df5147ae9b6306))
+* **deps:** update vite to version ^8.3.6 and add script for installation ([acbf2f3](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/acbf2f3f93b265a84faf933391a0b16e40b38332))
+* **deps:** update vitest dependencies to version 5.1.0 ([c240d9d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/c240d9d681bf8367234a4b6881f244a0253365c1))
+* **scripts:** ensure node_modules and package-lock.json are removed before updates ([1af3f4c](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/1af3f4c45fd83ece1c765ce578df47f8716f42a1))
+
 ## [1.12.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.11.2...workspace-file-bookmarks-v1.12.0) (2026-11-02)
 
 
