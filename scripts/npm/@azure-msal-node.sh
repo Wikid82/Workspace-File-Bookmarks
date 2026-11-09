@@ -17,8 +17,10 @@ for MODULE in "${NPM_MODULES[@]}"; do
     if [ -n "$(npm pkg get overrides.@azure/msal-node)" ]; then
         LATEST="$(npm view @azure/msal-node version)"
         npm pkg set "overrides.@azure/msal-node=^${LATEST}"
+        rm -rf node_modules package-lock.json
         npm install
     else
+        rm -rf node_modules package-lock.json
         npm update @azure/msal-node
     fi
 done

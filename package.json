@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/Wikid82/Workspace-File-Bookmarks#readme",
   "engines": {
-    "vscode": "^1.144.0"
+    "vscode": "^1.145.0"
   },
   "activationEvents": [],
   "main": "./dist/extension.cjs",
@@ -352,7 +352,7 @@
     "test:e2e": "vscode-test"
   },
   "overrides": {
-    "@azure/msal-node": "^7.1.2",
+    "@azure/msal-node": "^7.2.1",
     "diff": "^9.0.0",
     "serialize-javascript": "^7.1.4"
   },
@@ -360,9 +360,12 @@
     "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.6.6",
-    "@types/vscode": "^1.144.0",
-    "@typescript/native": "npm:typescript@^7.1.0-dev.20261101.1",
-    "@vitest/coverage-v8": "^5.0.5",
+    "@types/vscode": "^1.145.0",
+    "@typescript/native": "npm:typescript@^7.1.0-dev.20261108.1",
+    "@vitest/coverage-istanbul": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.0",
+    "@vitest/eslint-plugin": "^1.6.28",
+    "@vitest/ui": "^5.1.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.1.0",
@@ -374,7 +377,11 @@
     "prettier": "^3.9.10",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.72.1",
-    "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vite": "^8.3.6",
+    "vitest": "^5.1.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "lefthook@2.2.2": true
   }
 }
