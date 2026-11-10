@@ -31,6 +31,10 @@
   },
   "packageRules": [
     {
+      "matchDepNames": ["vscode"],
+      "enabled": false
+    },
+    {
       "description": "Group GitHub Actions non-major updates into one PR",
       "matchManagers": ["github-actions"],
       "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
