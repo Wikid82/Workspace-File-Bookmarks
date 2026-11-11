@@ -333,6 +333,21 @@ describe('BookmarksTreeProvider', () => {
         }
       });
 
+      it('uses the default folder icon when no icon or color is set', () => {
+        const node = new FolderGroupItem({ id: 'f', name: 'Backend', createdAt: 0 }, []);
+
+        expect(node.iconPath).toMatchObject({ id: 'folder', color: undefined });
+      });
+
+      it('applies a custom icon and theme color to the folder', () => {
+        const node = new FolderGroupItem(
+          { id: 'f', name: 'Backend', createdAt: 0, icon: 'server', color: 'charts.red' },
+          [],
+        );
+
+        expect(node.iconPath).toMatchObject({ id: 'server', color: { id: 'charts.red' } });
+      });
+
       it('uses the plural "subfolders" when there is more than one', () => {
         const parent = { id: 'p', name: 'Backend', createdAt: 0, parentId: null };
         const node = new FolderGroupItem(

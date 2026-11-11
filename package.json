@@ -149,6 +149,11 @@
         "category": "Workspace File Bookmarks"
       },
       {
+        "command": "workspace-file-bookmarks.setFolderAppearance",
+        "title": "Set Folder Icon and Color...",
+        "category": "Workspace File Bookmarks"
+      },
+      {
         "command": "workspace-file-bookmarks.deleteFolder",
         "title": "Delete Folder",
         "category": "Workspace File Bookmarks",
@@ -348,6 +353,11 @@
         },
         {
           "command": "workspace-file-bookmarks.moveFolderToParent",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
+          "group": "1_modification"
+        },
+        {
+          "command": "workspace-file-bookmarks.setFolderAppearance",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
           "group": "1_modification"
         }

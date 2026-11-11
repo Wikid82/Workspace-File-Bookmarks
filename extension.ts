@@ -31,7 +31,41 @@ export interface BookmarkFolder {
   createdAt: number;
   order?: number;
   parentId?: string | null;
+  /** A codicon id (e.g. `server`), shown instead of the default folder icon. */
+  icon?: string;
+  /** A theme color id (e.g. `charts.red`) tinting the folder's icon. */
+  color?: string;
 }
+
+/** Codicons offered when customizing a folder's icon. */
+export const FOLDER_ICON_CHOICES: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'folder', label: 'Folder' },
+  { id: 'server', label: 'Server' },
+  { id: 'database', label: 'Database' },
+  { id: 'beaker', label: 'Beaker' },
+  { id: 'bug', label: 'Bug' },
+  { id: 'checklist', label: 'Checklist' },
+  { id: 'eye', label: 'In Review' },
+  { id: 'flame', label: 'Flame' },
+  { id: 'gear', label: 'Gear' },
+  { id: 'globe', label: 'Globe' },
+  { id: 'heart', label: 'Heart' },
+  { id: 'lock', label: 'Lock' },
+  { id: 'rocket', label: 'Rocket' },
+  { id: 'star-full', label: 'Star' },
+  { id: 'tag', label: 'Tag' },
+  { id: 'tools', label: 'Tools' },
+];
+
+/** Theme colors offered when customizing a folder's icon color. */
+export const FOLDER_COLOR_CHOICES: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'charts.red', label: 'Red' },
+  { id: 'charts.orange', label: 'Orange' },
+  { id: 'charts.yellow', label: 'Yellow' },
+  { id: 'charts.green', label: 'Green' },
+  { id: 'charts.blue', label: 'Blue' },
+  { id: 'charts.purple', label: 'Purple' },
+];
 
 /** Folders may nest up to this many levels deep (root-level folders are depth 1). */
 export const MAX_FOLDER_DEPTH = 3;
@@ -288,6 +322,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       (item: FolderGroupItem) => renameFolder(store, item),
     ),
     vscode.commands.registerCommand(
+      'workspace-file-bookmarks.setFolderAppearance',
+      (item: FolderGroupItem) => setFolderAppearance(store, item),
+    ),
+    vscode.commands.registerCommand(
       'workspace-file-bookmarks.deleteFolder',
       (item: FolderGroupItem) => deleteFolder(store, item),
     ),
@@ -476,6 +514,27 @@ export class BookmarkStore {
     this.setFolders(this.getAllFolders().map((f) => (f.id === id ? { ...f, name } : f)));
   }
 
+  /** Sets a folder's icon and/or color; `undefined` for either clears it back to the default. */
+  setFolderAppearance(id: string, appearance: { icon?: string; color?: string }) {
+    this.setFolders(
+      this.getAllFolders().map((f) => {
+        if (f.id !== id) {
+          return f;
+        }
+        const updated: BookmarkFolder = { ...f };
+        delete updated.icon;
+        delete updated.color;
+        if (appearance.icon) {
+          updated.icon = appearance.icon;
+        }
+        if (appearance.color) {
+          updated.color = appearance.color;
+        }
+        return updated;
+      }),
+    );
+  }
+
   moveFolderToParent(id: string, parentId: string | null) {
     this.setFolders(this.getAllFolders().map((f) => (f.id === id ? { ...f, parentId } : f)));
   }
@@ -554,7 +613,10 @@ export class FolderGroupItem extends vscode.TreeItem {
   ) {
     super(folder.name, vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue = 'bookmarkFolder';
-    this.iconPath = new vscode.ThemeIcon('folder');
+    this.iconPath = new vscode.ThemeIcon(
+      folder.icon ?? 'folder',
+      folder.color ? new vscode.ThemeColor(folder.color) : undefined,
+    );
     this.description =
       childFolders.length > 0
         ? `${bookmarks.length} • ${childFolders.length} subfolder${childFolders.length === 1 ? '' : 's'}`
@@ -1003,6 +1065,38 @@ export async function renameFolder(store: BookmarkStore, item: FolderGroupItem) 
   if (name) {
     store.renameFolder(item.folder.id, name.trim());
   }
+}
+
+const DEFAULT_APPEARANCE_PICK = '$(discard) Default';
+
+/** Two-step quick-pick (icon, then color) that stores the chosen look on the folder. Cancelling either step leaves the folder unchanged. */
+export async function setFolderAppearance(store: BookmarkStore, item: FolderGroupItem) {
+  const iconItems = [
+    { label: DEFAULT_APPEARANCE_PICK, iconId: undefined as string | undefined },
+    ...FOLDER_ICON_CHOICES.map((c) => ({ label: `$(${c.id}) ${c.label}`, iconId: c.id })),
+  ];
+  const pickedIcon = await vscode.window.showQuickPick(iconItems, {
+    placeHolder: `Icon for "${item.folder.name}"`,
+  });
+  if (!pickedIcon) {
+    return;
+  }
+
+  const colorItems = [
+    { label: DEFAULT_APPEARANCE_PICK, colorId: undefined as string | undefined },
+    ...FOLDER_COLOR_CHOICES.map((c) => ({ label: c.label, colorId: c.id })),
+  ];
+  const pickedColor = await vscode.window.showQuickPick(colorItems, {
+    placeHolder: `Color for "${item.folder.name}"`,
+  });
+  if (!pickedColor) {
+    return;
+  }
+
+  store.setFolderAppearance(item.folder.id, {
+    icon: pickedIcon.iconId,
+    color: pickedColor.colorId,
+  });
 }
 
 export async function renameBookmark(store: BookmarkStore, item: BookmarkTreeItem) {

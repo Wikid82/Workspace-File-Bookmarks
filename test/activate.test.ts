@@ -15,8 +15,8 @@ describe('activate', () => {
       'workspace-file-bookmarks-view',
       expect.objectContaining({ canSelectMany: true }),
     );
-    expect(commands.registerCommand).toHaveBeenCalledTimes(29);
-    expect((context as any).subscriptions).toHaveLength(30); // tree view + 29 commands
+    expect(commands.registerCommand).toHaveBeenCalledTimes(30);
+    expect((context as any).subscriptions).toHaveLength(31); // tree view + 30 commands
   });
 
   it('exercises every registered command handler at least once', async () => {
@@ -61,6 +61,8 @@ describe('activate', () => {
     await handlers.get('workspace-file-bookmarks.createSubfolder')?.({ folder });
     await handlers.get('workspace-file-bookmarks.moveFolderToParent')?.({ folder });
     await handlers.get('workspace-file-bookmarks.renameFolder')?.({ folder });
+    window.showQuickPick.mockResolvedValue(undefined);
+    await handlers.get('workspace-file-bookmarks.setFolderAppearance')?.({ folder });
     await handlers.get('workspace-file-bookmarks.deleteFolder')?.({
       folder,
       bookmarks: [],
@@ -83,8 +85,8 @@ describe('activate', () => {
     await handlers.get('workspace-file-bookmarks.revealBookmarkInExplorer')?.({ bookmark });
     await handlers.get('workspace-file-bookmarks.revealBookmarkInFileManager')?.({ bookmark });
 
-    expect(commands.registerCommand).toHaveBeenCalledTimes(29);
-    expect((context as any).subscriptions).toHaveLength(30); // tree view + 29 commands
+    expect(commands.registerCommand).toHaveBeenCalledTimes(30);
+    expect((context as any).subscriptions).toHaveLength(31); // tree view + 30 commands
   });
 });
 

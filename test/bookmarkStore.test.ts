@@ -544,3 +544,45 @@ describe('bulk bookmark operations', () => {
     expect(changes).toBe(1);
   });
 });
+
+describe('setFolderAppearance', () => {
+  it('sets icon and color on only the targeted folder', () => {
+    const store = newStore();
+    const a = store.createFolder('A');
+    const b = store.createFolder('B');
+
+    store.setFolderAppearance(a.id, { icon: 'bug', color: 'charts.green' });
+
+    const folders = store.getAllFolders();
+    expect(folders.find((f) => f.id === a.id)).toMatchObject({
+      icon: 'bug',
+      color: 'charts.green',
+    });
+    expect(folders.find((f) => f.id === b.id)).not.toHaveProperty('icon');
+  });
+
+  it('clears icon and color when called with no values', () => {
+    const store = newStore();
+    const a = store.createFolder('A');
+    store.setFolderAppearance(a.id, { icon: 'bug', color: 'charts.green' });
+
+    store.setFolderAppearance(a.id, {});
+
+    expect(store.getAllFolders()[0]).toEqual(
+      expect.not.objectContaining({ icon: expect.anything(), color: expect.anything() }),
+    );
+    expect(store.getAllFolders()[0]).not.toHaveProperty('icon');
+    expect(store.getAllFolders()[0]).not.toHaveProperty('color');
+  });
+
+  it('preserves icon and color through mergeImport', () => {
+    const store = newStore();
+
+    store.mergeImport(
+      [],
+      [{ id: 'x', name: 'Imported', createdAt: 0, icon: 'rocket', color: 'charts.blue' }],
+    );
+
+    expect(store.getAllFolders()[0]).toMatchObject({ icon: 'rocket', color: 'charts.blue' });
+  });
+});
