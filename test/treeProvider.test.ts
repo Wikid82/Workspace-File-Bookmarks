@@ -313,6 +313,26 @@ describe('BookmarksTreeProvider', () => {
         expect(node.description).toBe('1 • 1 subfolder');
       });
 
+      it('marks stale bookmarks with a warning icon and "missing" description in list and tree views', () => {
+        const { store, provider } = newProvider();
+        store.addBookmark(makeBookmark({ id: 'a', uri: 'file:///repo/a.ts' }));
+        store.addBookmark(makeBookmark({ id: 'b', uri: 'file:///repo/b.ts' }));
+        store.markStale('a');
+
+        for (const mode of ['tree', 'list'] as const) {
+          provider.setViewMode(mode);
+          const items = provider.getChildren() as BookmarkTreeItem[];
+          const stale = items.find((i) => i.bookmark.id === 'a') as BookmarkTreeItem;
+          const fresh = items.find((i) => i.bookmark.id === 'b') as BookmarkTreeItem;
+          expect(stale.stale).toBe(true);
+          expect(stale.description).toMatch(/^missing/);
+          expect(stale.iconPath).toMatchObject({ id: 'warning' });
+          expect(stale.tooltip).toContain('no longer exists');
+          expect(fresh.stale).toBe(false);
+          expect(fresh.iconPath).toMatchObject({ id: 'bookmark' });
+        }
+      });
+
       it('uses the plural "subfolders" when there is more than one', () => {
         const parent = { id: 'p', name: 'Backend', createdAt: 0, parentId: null };
         const node = new FolderGroupItem(

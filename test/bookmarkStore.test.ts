@@ -481,3 +481,32 @@ describe('mergeImport', () => {
     expect(store.getAllBookmarks()).toHaveLength(1);
   });
 });
+
+describe('stale bookmark tracking', () => {
+  it('only fires a change event when the stale set actually changes', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'a' }));
+    let changes = 0;
+    store.onDidChange(() => changes++);
+
+    store.markStale('a');
+    store.markStale('a');
+    expect(changes).toBe(1);
+
+    store.clearStale('a');
+    expect(store.isStale('a')).toBe(false);
+    expect(changes).toBe(2);
+  });
+
+  it('removeStaleBookmarks drops only stale bookmarks and resets the stale set', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'a', uri: 'file:///repo/a.ts' }));
+    store.addBookmark(makeBookmark({ id: 'b', uri: 'file:///repo/b.ts' }));
+    store.markStale('a');
+
+    store.removeStaleBookmarks();
+
+    expect(store.getAllBookmarks().map((b) => b.id)).toEqual(['b']);
+    expect(store.isStale('a')).toBe(false);
+  });
+});

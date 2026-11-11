@@ -65,6 +65,7 @@ describe('Workspace File Bookmarks (e2e)', () => {
       'workspace-file-bookmarks.openAllInFolder',
       'workspace-file-bookmarks.setViewModeList',
       'workspace-file-bookmarks.setViewModeTree',
+      'workspace-file-bookmarks.removeBrokenBookmarks',
       'workspace-file-bookmarks.exportBookmarks',
       'workspace-file-bookmarks.importBookmarks',
       'workspace-file-bookmarks.goToBookmark',
@@ -296,5 +297,45 @@ describe('Workspace File Bookmarks (e2e)', () => {
     } finally {
       vscode.window.showQuickPick = originalShowQuickPick;
     }
+  });
+
+  it('marks a bookmark to a deleted file stale and sweeps it away with removeBrokenBookmarks', async () => {
+    const { store, provider } = await getApi();
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    store.addBookmark({
+      id: 'missing-1',
+      uri: fixtureUri('src/does-not-exist.ts').toString(),
+      label: 'does-not-exist.ts',
+      relativePath: 'src/does-not-exist.ts',
+      workspaceFolderName: 'workspace',
+      folderId: null,
+      createdAt: Date.now(),
+    });
+
+    const originalShowWarningMessage = vscode.window.showWarningMessage;
+    try {
+      (vscode.window as any).showWarningMessage = async () => undefined;
+      await vscode.commands.executeCommand('workspace-file-bookmarks.removeBrokenBookmarks');
+      const stale = (provider.getChildren() as BookmarkTreeItem[]).filter(
+        (n) => isBookmarkNode(n) && n.stale,
+      );
+      assert.deepEqual(
+        stale.map((n) => n.bookmark.id),
+        ['missing-1'],
+      );
+      assert.equal(store.getAllBookmarks().length, 2, 'declining must not remove anything');
+
+      (vscode.window as any).showWarningMessage = async () => 'Remove';
+      await vscode.commands.executeCommand('workspace-file-bookmarks.removeBrokenBookmarks');
+    } finally {
+      vscode.window.showWarningMessage = originalShowWarningMessage;
+    }
+
+    assert.deepEqual(
+      store.getAllBookmarks().map((b) => b.relativePath),
+      ['src/sample-a.ts'],
+    );
   });
 });
