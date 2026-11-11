@@ -510,3 +510,37 @@ describe('stale bookmark tracking', () => {
     expect(store.isStale('a')).toBe(false);
   });
 });
+
+describe('bulk bookmark operations', () => {
+  it('removeBookmarks removes only the named bookmarks in a single change event', () => {
+    const store = newStore();
+    for (const id of ['a', 'b', 'c']) {
+      store.addBookmark(makeBookmark({ id, uri: `file:///repo/${id}.ts` }));
+    }
+    let changes = 0;
+    store.onDidChange(() => changes++);
+
+    store.removeBookmarks(['a', 'c']);
+
+    expect(store.getAllBookmarks().map((b) => b.id)).toEqual(['b']);
+    expect(changes).toBe(1);
+  });
+
+  it('moveBookmarksToFolder moves only the named bookmarks in a single change event', () => {
+    const store = newStore();
+    for (const id of ['a', 'b', 'c']) {
+      store.addBookmark(makeBookmark({ id, uri: `file:///repo/${id}.ts` }));
+    }
+    const folder = store.createFolder('Backend');
+    let changes = 0;
+    store.onDidChange(() => changes++);
+
+    store.moveBookmarksToFolder(['a', 'b'], folder.id);
+
+    const byId = new Map(store.getAllBookmarks().map((b) => [b.id, b.folderId]));
+    expect(byId.get('a')).toBe(folder.id);
+    expect(byId.get('b')).toBe(folder.id);
+    expect(byId.get('c')).toBeNull();
+    expect(changes).toBe(1);
+  });
+});

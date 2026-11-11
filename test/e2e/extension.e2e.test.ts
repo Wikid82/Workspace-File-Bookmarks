@@ -338,4 +338,39 @@ describe('Workspace File Bookmarks (e2e)', () => {
       ['src/sample-a.ts'],
     );
   });
+
+  it('removes and moves every bookmark in a multi-selection via the tree commands', async () => {
+    const { store, provider } = await getApi();
+    for (const file of ['src/sample-a.ts', 'src/sample-b.ts']) {
+      const document = await vscode.workspace.openTextDocument(fixtureUri(file));
+      await vscode.window.showTextDocument(document);
+      await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    }
+    assert.equal(store.getAllBookmarks().length, 2);
+    const folder = store.createFolder('Batch');
+    const items = (provider.getChildren() as Array<BookmarkTreeItem | FolderGroupItem>).filter(
+      isBookmarkNode,
+    );
+    assert.equal(items.length, 2);
+
+    const originalShowQuickPick = vscode.window.showQuickPick;
+    try {
+      (vscode.window as any).showQuickPick = async () => 'Batch';
+      await vscode.commands.executeCommand(
+        'workspace-file-bookmarks.moveToFolder',
+        items[0],
+        items,
+      );
+    } finally {
+      vscode.window.showQuickPick = originalShowQuickPick;
+    }
+    assert.ok(store.getAllBookmarks().every((b) => b.folderId === folder.id));
+
+    await vscode.commands.executeCommand(
+      'workspace-file-bookmarks.removeBookmark',
+      items[0],
+      items,
+    );
+    assert.equal(store.getAllBookmarks().length, 0);
+  });
 });

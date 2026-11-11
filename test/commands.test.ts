@@ -23,6 +23,7 @@ import {
   renameBookmark,
   removeBrokenBookmarks,
   renameFolder,
+  resolveBookmarkTargets,
   type Bookmark,
   type BookmarkFolder,
 } from '../extension';
@@ -773,6 +774,58 @@ describe('moveToFolder', () => {
     await moveToFolder(store, { bookmark: makeBookmark({ id: 'a' }) } as any);
 
     expect(store.getAllBookmarks()[0].folderId).toBe('existing');
+  });
+});
+
+describe('resolveBookmarkTargets', () => {
+  const nodeFor = (id: string) => ({ bookmark: makeBookmark({ id }) }) as any;
+
+  it('returns just the clicked item when there is no selection', () => {
+    expect(resolveBookmarkTargets(nodeFor('a')).map((b) => b.id)).toEqual(['a']);
+  });
+
+  it('returns just the clicked item when the selection is only that item', () => {
+    const a = nodeFor('a');
+    expect(resolveBookmarkTargets(a, [a]).map((b) => b.id)).toEqual(['a']);
+  });
+
+  it('returns every selected bookmark when the clicked item is part of a multi-selection', () => {
+    const [a, b, c] = [nodeFor('a'), nodeFor('b'), nodeFor('c')];
+    expect(resolveBookmarkTargets(b, [a, b, c]).map((x) => x.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('ignores folders in the selection', () => {
+    const [a, b] = [nodeFor('a'), nodeFor('b')];
+    const folderNode = { folder: makeFolder() } as any;
+    expect(resolveBookmarkTargets(a, [a, folderNode, b]).map((x) => x.id)).toEqual(['a', 'b']);
+  });
+
+  it('acts only on the clicked item when it is outside the selection', () => {
+    const [a, b, c] = [nodeFor('a'), nodeFor('b'), nodeFor('c')];
+    expect(resolveBookmarkTargets(c, [a, b]).map((x) => x.id)).toEqual(['c']);
+  });
+});
+
+describe('moveToFolder with a multi-selection', () => {
+  it('moves every selected bookmark and words the prompt for the count', async () => {
+    const store = newStore();
+    for (const id of ['a', 'b', 'c']) {
+      store.addBookmark(makeBookmark({ id, uri: `file:///repo/${id}.ts` }));
+    }
+    const folder = store.createFolder('Backend');
+    window.showQuickPick.mockResolvedValue('Backend');
+    const nodeFor = (id: string) => ({ bookmark: makeBookmark({ id }) }) as any;
+    const [a, b] = [nodeFor('a'), nodeFor('b')];
+
+    await moveToFolder(store, a, [a, b]);
+
+    const byId = new Map(store.getAllBookmarks().map((x) => [x.id, x.folderId]));
+    expect(byId.get('a')).toBe(folder.id);
+    expect(byId.get('b')).toBe(folder.id);
+    expect(byId.get('c')).toBeNull();
+    expect(window.showQuickPick.mock.calls[0][1]).toMatchObject({
+      placeHolder: 'Move 2 bookmarks to...',
+    });
   });
 });
 
