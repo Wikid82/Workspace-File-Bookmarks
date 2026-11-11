@@ -20,7 +20,7 @@
   "minimumReleaseAge": null,
   "rebaseWhen": "auto",
   "rangeStrategy": "bump",
-  "automerge": false,
+  "automerge": true,
   "automergeType": "pr",
   "platformAutomerge": true,
   "vulnerabilityAlerts": {
