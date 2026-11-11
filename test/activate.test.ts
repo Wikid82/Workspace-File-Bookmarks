@@ -15,8 +15,8 @@ describe('activate', () => {
       'workspace-file-bookmarks-view',
       expect.objectContaining({ canSelectMany: true }),
     );
-    expect(commands.registerCommand).toHaveBeenCalledTimes(25);
-    expect((context as any).subscriptions).toHaveLength(26); // tree view + 25 commands
+    expect(commands.registerCommand).toHaveBeenCalledTimes(29);
+    expect((context as any).subscriptions).toHaveLength(30); // tree view + 29 commands
   });
 
   it('exercises every registered command handler at least once', async () => {
@@ -78,8 +78,13 @@ describe('activate', () => {
     await handlers.get('workspace-file-bookmarks.importBookmarks')?.();
     window.showQuickPick.mockResolvedValue(undefined);
     await handlers.get('workspace-file-bookmarks.goToBookmark')?.();
+    await handlers.get('workspace-file-bookmarks.copyBookmarkPath')?.({ bookmark });
+    await handlers.get('workspace-file-bookmarks.copyBookmarkRelativePath')?.({ bookmark });
+    await handlers.get('workspace-file-bookmarks.revealBookmarkInExplorer')?.({ bookmark });
+    await handlers.get('workspace-file-bookmarks.revealBookmarkInFileManager')?.({ bookmark });
 
-    expect(handlers.size).toBe(25);
+    expect(commands.registerCommand).toHaveBeenCalledTimes(29);
+    expect((context as any).subscriptions).toHaveLength(30); // tree view + 29 commands
   });
 });
 

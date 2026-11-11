@@ -5,6 +5,8 @@ import {
   addActiveSelectionBookmark,
   addBookmarksForUris,
   addBookmarksToFolder,
+  copyBookmarkPath,
+  copyBookmarkRelativePath,
   createFolder,
   createSubfolder,
   deleteFolder,
@@ -24,11 +26,13 @@ import {
   removeBrokenBookmarks,
   renameFolder,
   resolveBookmarkTargets,
+  revealBookmarkInExplorer,
+  revealBookmarkInFileManager,
   type Bookmark,
   type BookmarkFolder,
 } from '../extension';
 import { createFakeContext } from './fakeContext';
-import { Position, Selection, Uri, window, workspace } from './vscode-mock';
+import { Position, Selection, Uri, commands, env, window, workspace } from './vscode-mock';
 import type { InputBox } from './vscode-mock';
 
 function newStore() {
@@ -1095,5 +1099,37 @@ describe('removeBrokenBookmarks', () => {
 
     expect(window.showInformationMessage).toHaveBeenCalledWith('No broken bookmarks found.');
     expect(window.showWarningMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('copy path / reveal actions', () => {
+  it('copies the absolute path of the bookmarked file', async () => {
+    await copyBookmarkPath(makeBookmark({ uri: 'file:///repo/src/a.ts' }));
+
+    expect(env.clipboard.writeText).toHaveBeenCalledWith('/repo/src/a.ts');
+  });
+
+  it('copies the workspace-relative path of the bookmarked file', async () => {
+    await copyBookmarkRelativePath(makeBookmark({ relativePath: 'src/a.ts' }));
+
+    expect(env.clipboard.writeText).toHaveBeenCalledWith('src/a.ts');
+  });
+
+  it("reveals the bookmarked file in VS Code's Explorer", async () => {
+    await revealBookmarkInExplorer(makeBookmark({ uri: 'file:///repo/src/a.ts' }));
+
+    expect(commands.executeCommand).toHaveBeenCalledWith(
+      'revealInExplorer',
+      expect.objectContaining({ fsPath: '/repo/src/a.ts' }),
+    );
+  });
+
+  it('reveals the bookmarked file in the OS file manager', async () => {
+    await revealBookmarkInFileManager(makeBookmark({ uri: 'file:///repo/src/a.ts' }));
+
+    expect(commands.executeCommand).toHaveBeenCalledWith(
+      'revealFileInOS',
+      expect.objectContaining({ fsPath: '/repo/src/a.ts' }),
+    );
   });
 });
