@@ -69,6 +69,10 @@ describe('Workspace File Bookmarks (e2e)', () => {
       'workspace-file-bookmarks.exportBookmarks',
       'workspace-file-bookmarks.importBookmarks',
       'workspace-file-bookmarks.goToBookmark',
+      'workspace-file-bookmarks.copyBookmarkPath',
+      'workspace-file-bookmarks.copyBookmarkRelativePath',
+      'workspace-file-bookmarks.revealBookmarkInExplorer',
+      'workspace-file-bookmarks.revealBookmarkInFileManager',
     ]) {
       assert.ok(commands.includes(id), `expected command "${id}" to be registered`);
     }
@@ -372,5 +376,29 @@ describe('Workspace File Bookmarks (e2e)', () => {
       items,
     );
     assert.equal(store.getAllBookmarks().length, 0);
+  });
+
+  it('copies the absolute and relative path of a bookmark to the clipboard', async () => {
+    const { store } = await getApi();
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    const item = { bookmark: store.getAllBookmarks()[0] };
+
+    await vscode.commands.executeCommand('workspace-file-bookmarks.copyBookmarkPath', item);
+    assert.equal(await vscode.env.clipboard.readText(), document.uri.fsPath);
+
+    await vscode.commands.executeCommand('workspace-file-bookmarks.copyBookmarkRelativePath', item);
+    assert.equal(await vscode.env.clipboard.readText(), 'src/sample-a.ts');
+  });
+
+  it("reveals a bookmark in VS Code's Explorer without error", async () => {
+    const { store } = await getApi();
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    const item = { bookmark: store.getAllBookmarks()[0] };
+
+    await vscode.commands.executeCommand('workspace-file-bookmarks.revealBookmarkInExplorer', item);
   });
 });

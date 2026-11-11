@@ -315,6 +315,22 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('workspace-file-bookmarks.goToBookmark', () =>
       goToBookmark(store),
     ),
+    vscode.commands.registerCommand(
+      'workspace-file-bookmarks.copyBookmarkPath',
+      (item: BookmarkTreeItem) => copyBookmarkPath(item.bookmark),
+    ),
+    vscode.commands.registerCommand(
+      'workspace-file-bookmarks.copyBookmarkRelativePath',
+      (item: BookmarkTreeItem) => copyBookmarkRelativePath(item.bookmark),
+    ),
+    vscode.commands.registerCommand(
+      'workspace-file-bookmarks.revealBookmarkInExplorer',
+      (item: BookmarkTreeItem) => revealBookmarkInExplorer(item.bookmark),
+    ),
+    vscode.commands.registerCommand(
+      'workspace-file-bookmarks.revealBookmarkInFileManager',
+      (item: BookmarkTreeItem) => revealBookmarkInFileManager(item.bookmark),
+    ),
   );
 
   return { store, provider };
@@ -901,6 +917,26 @@ export async function removeBrokenBookmarks(store: BookmarkStore): Promise<void>
   }
   store.removeStaleBookmarks();
   vscode.window.showInformationMessage(`Removed ${broken.length} broken bookmark(s).`);
+}
+
+/** Copies the bookmarked file's absolute path to the clipboard. */
+export async function copyBookmarkPath(bookmark: Bookmark): Promise<void> {
+  await vscode.env.clipboard.writeText(vscode.Uri.parse(bookmark.uri).fsPath);
+}
+
+/** Copies the bookmarked file's workspace-relative path to the clipboard. */
+export async function copyBookmarkRelativePath(bookmark: Bookmark): Promise<void> {
+  await vscode.env.clipboard.writeText(bookmark.relativePath);
+}
+
+/** Reveals the bookmarked file in VS Code's Explorer view. */
+export async function revealBookmarkInExplorer(bookmark: Bookmark): Promise<void> {
+  await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.parse(bookmark.uri));
+}
+
+/** Reveals the bookmarked file in the OS file manager. */
+export async function revealBookmarkInFileManager(bookmark: Bookmark): Promise<void> {
+  await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.parse(bookmark.uri));
 }
 
 export async function openAllInFolder(store: BookmarkStore, item: FolderGroupItem) {

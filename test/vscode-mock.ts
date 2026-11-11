@@ -180,3 +180,9 @@ export const commands = {
   registerCommand: vi.fn(() => ({ dispose: () => {} })),
   executeCommand: vi.fn(),
 };
+
+export const env = {
+  clipboard: {
+    writeText: vi.fn(() => Promise.resolve()),
+  },
+};

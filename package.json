@@ -200,6 +200,26 @@
         "title": "Go to Bookmark...",
         "category": "Workspace File Bookmarks",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "workspace-file-bookmarks.copyBookmarkPath",
+        "title": "Copy Path",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.copyBookmarkRelativePath",
+        "title": "Copy Relative Path",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.revealBookmarkInExplorer",
+        "title": "Reveal in Explorer",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.revealBookmarkInFileManager",
+        "title": "Reveal in File Manager",
+        "category": "Workspace File Bookmarks"
       }
     ],
     "menus": {
@@ -285,6 +305,26 @@
           "command": "workspace-file-bookmarks.moveToFolder",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
           "group": "1_modification"
+        },
+        {
+          "command": "workspace-file-bookmarks.revealBookmarkInExplorer",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "2_reveal@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.revealBookmarkInFileManager",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "2_reveal@2"
+        },
+        {
+          "command": "workspace-file-bookmarks.copyBookmarkPath",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.copyBookmarkRelativePath",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "3_copy@2"
         },
         {
           "command": "workspace-file-bookmarks.openAllInFolder",
