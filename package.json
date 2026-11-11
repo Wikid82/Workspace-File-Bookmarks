@@ -178,6 +178,12 @@
         "icon": "$(list-tree)"
       },
       {
+        "command": "workspace-file-bookmarks.removeBrokenBookmarks",
+        "title": "Remove Broken Bookmarks...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(warning)"
+      },
+      {
         "command": "workspace-file-bookmarks.exportBookmarks",
         "title": "Export Bookmarks...",
         "category": "Workspace File Bookmarks",
@@ -242,6 +248,11 @@
           "command": "workspace-file-bookmarks.setViewModeTree",
           "when": "view == workspace-file-bookmarks-view && workspace-file-bookmarks.viewMode == list",
           "group": "navigation@5"
+        },
+        {
+          "command": "workspace-file-bookmarks.removeBrokenBookmarks",
+          "when": "view == workspace-file-bookmarks-view",
+          "group": "8_maintenance@1"
         },
         {
           "command": "workspace-file-bookmarks.exportBookmarks",

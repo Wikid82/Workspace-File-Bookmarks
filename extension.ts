@@ -265,7 +265,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       provider.setSearchFilter(null),
     ),
     vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) =>
-      openBookmark(bookmark),
+      openBookmark(bookmark, store),
+    ),
+    vscode.commands.registerCommand('workspace-file-bookmarks.removeBrokenBookmarks', () =>
+      removeBrokenBookmarks(store),
     ),
     vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () =>
       createFolder(store),
@@ -320,7 +323,39 @@ export class BookmarkStore {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange = this._onDidChange.event;
 
+  /** Ids of bookmarks whose target was found missing. In-memory only: re-derived lazily, never persisted. */
+  private staleIds = new Set<string>();
+
   constructor(private readonly context: vscode.ExtensionContext) {}
+
+  isStale(id: string): boolean {
+    return this.staleIds.has(id);
+  }
+
+  /** Replaces the set of stale bookmark ids and refreshes the tree if it changed. */
+  setStaleIds(ids: Iterable<string>) {
+    const next = new Set(ids);
+    if (next.size === this.staleIds.size && [...next].every((id) => this.staleIds.has(id))) {
+      return;
+    }
+    this.staleIds = next;
+    this._onDidChange.fire();
+  }
+
+  /** Removes every bookmark currently marked stale, in a single write. */
+  removeStaleBookmarks() {
+    const stale = this.staleIds;
+    this.staleIds = new Set();
+    this.setBookmarks(this.getAllBookmarks().filter((b) => !stale.has(b.id)));
+  }
+
+  markStale(id: string) {
+    this.setStaleIds([...this.staleIds, id]);
+  }
+
+  clearStale(id: string) {
+    this.setStaleIds([...this.staleIds].filter((staleId) => staleId !== id));
+  }
 
   getAllBookmarks(): Bookmark[] {
     return this.context.workspaceState.get<Bookmark[]>(STORAGE_KEY_BOOKMARKS, []);
@@ -498,14 +533,18 @@ export class BookmarkTreeItem extends vscode.TreeItem {
   constructor(
     public readonly bookmark: Bookmark,
     descriptionParts: string[],
+    public readonly stale = false,
   ) {
     super(bookmark.label, vscode.TreeItemCollapsibleState.None);
-    this.description = descriptionParts.join(' • ');
-    this.tooltip =
+    this.description = (stale ? ['missing', ...descriptionParts] : descriptionParts).join(' • ');
+    const location =
       bookmark.lineStart !== undefined
         ? `${bookmark.relativePath}:${formatLineRange({ lineStart: bookmark.lineStart, lineEnd: bookmark.lineEnd })}`
         : bookmark.relativePath;
-    this.iconPath = new vscode.ThemeIcon('bookmark');
+    this.tooltip = stale ? `${location}\nThis file no longer exists.` : location;
+    this.iconPath = stale
+      ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground'))
+      : new vscode.ThemeIcon('bookmark');
     this.contextValue = 'bookmarkItem';
     this.command = {
       command: 'workspace-file-bookmarks.openBookmark',
@@ -587,16 +626,19 @@ export class BookmarksTreeProvider
       bookmarks = bookmarks.filter((b) => matchesSearchFilter(b, searchFilter));
     }
 
+    const makeItem = (b: Bookmark, folderName: string | null) =>
+      new BookmarkTreeItem(
+        b,
+        describeBookmark(b, isMultiRoot, folderName),
+        this.store.isStale(b.id),
+      );
+
     if (this.viewMode === 'list') {
       if (element) {
         return [];
       }
-      return sortByOrder(bookmarks, bookmarkFallbackCompare).map(
-        (b) =>
-          new BookmarkTreeItem(
-            b,
-            describeBookmark(b, isMultiRoot, folderBreadcrumb(folders, b.folderId ?? '') || null),
-          ),
+      return sortByOrder(bookmarks, bookmarkFallbackCompare).map((b) =>
+        makeItem(b, folderBreadcrumb(folders, b.folderId ?? '') || null),
       );
     }
 
@@ -611,8 +653,8 @@ export class BookmarksTreeProvider
       const childFolderNodes = sortByOrder(element.childFolders, folderFallbackCompare).map(
         buildFolderNode,
       );
-      const childBookmarkNodes = sortByOrder(element.bookmarks, bookmarkFallbackCompare).map(
-        (b) => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)),
+      const childBookmarkNodes = sortByOrder(element.bookmarks, bookmarkFallbackCompare).map((b) =>
+        makeItem(b, null),
       );
       return [...childFolderNodes, ...childBookmarkNodes];
     }
@@ -629,7 +671,7 @@ export class BookmarksTreeProvider
     const ungrouped = sortByOrder(
       bookmarks.filter((b) => !b.folderId),
       bookmarkFallbackCompare,
-    ).map((b) => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)));
+    ).map((b) => makeItem(b, null));
 
     return [...folderNodes, ...ungrouped];
   }
@@ -771,7 +813,22 @@ export function addBookmarksForUris(
   }
 }
 
-export async function openBookmark(bookmark: Bookmark) {
+/** Whether the file a bookmark points at still exists (a lightweight `fs.stat`, no content read). */
+export async function bookmarkTargetExists(bookmark: Bookmark): Promise<boolean> {
+  try {
+    await vscode.workspace.fs.stat(vscode.Uri.parse(bookmark.uri));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Opens a bookmark. When a `store` is given, a failed open whose target no longer exists marks the
+ * bookmark stale (greyed with a warning icon in the tree), and a successful open clears any stale
+ * mark. A failure for another reason (e.g. a binary file) is reported but not marked stale.
+ */
+export async function openBookmark(bookmark: Bookmark, store?: BookmarkStore) {
   try {
     const uri = vscode.Uri.parse(bookmark.uri);
     const document = await vscode.workspace.openTextDocument(uri);
@@ -783,11 +840,50 @@ export async function openBookmark(bookmark: Bookmark) {
       editor.selection = new vscode.Selection(range.start, range.end);
       editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
     }
+    store?.clearStale(bookmark.id);
   } catch {
+    if (store && !(await bookmarkTargetExists(bookmark))) {
+      store.markStale(bookmark.id);
+    }
     vscode.window.showErrorMessage(
       `Could not open "${bookmark.relativePath}". The file may have been moved or deleted.`,
     );
   }
+}
+
+/**
+ * Sweeps every bookmark with one `fs.stat` per distinct file, marks the missing ones stale, and —
+ * after a confirmation showing the count — removes them. Declining leaves them marked so they
+ * stay visible in the tree. On-demand only; nothing polls in the background.
+ */
+export async function removeBrokenBookmarks(store: BookmarkStore): Promise<void> {
+  const bookmarks = store.getAllBookmarks();
+  const existsByUri = new Map<string, boolean>();
+  await Promise.all(
+    [...new Set(bookmarks.map((b) => b.uri))].map(async (uri) => {
+      const exists = await bookmarkTargetExists(bookmarks.find((b) => b.uri === uri) as Bookmark);
+      existsByUri.set(uri, exists);
+    }),
+  );
+
+  const broken = bookmarks.filter((b) => existsByUri.get(b.uri) === false);
+  store.setStaleIds(broken.map((b) => b.id));
+
+  if (broken.length === 0) {
+    vscode.window.showInformationMessage('No broken bookmarks found.');
+    return;
+  }
+
+  const confirm = await vscode.window.showWarningMessage(
+    `Remove ${broken.length} broken bookmark(s) whose files no longer exist?`,
+    { modal: true },
+    'Remove',
+  );
+  if (confirm !== 'Remove') {
+    return;
+  }
+  store.removeStaleBookmarks();
+  vscode.window.showInformationMessage(`Removed ${broken.length} broken bookmark(s).`);
 }
 
 export async function openAllInFolder(store: BookmarkStore, item: FolderGroupItem) {
@@ -796,7 +892,7 @@ export async function openAllInFolder(store: BookmarkStore, item: FolderGroupIte
     return;
   }
   for (const bookmark of item.bookmarks) {
-    await openBookmark(bookmark);
+    await openBookmark(bookmark, store);
   }
 }
 
@@ -1283,6 +1379,6 @@ export async function goToBookmark(store: BookmarkStore): Promise<void> {
     placeHolder: 'Go to bookmark',
   });
   if (picked) {
-    await openBookmark(picked.bookmark);
+    await openBookmark(picked.bookmark, store);
   }
 }

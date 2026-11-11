@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { activate, deactivate } from '../extension';
 import { createFakeContext } from './fakeContext';
-import { commands, Position, Selection, Uri, window } from './vscode-mock';
+import { commands, Position, Selection, Uri, window, workspace } from './vscode-mock';
 
 describe('activate', () => {
   it('creates the tree view and registers every command', () => {
@@ -11,8 +11,8 @@ describe('activate', () => {
     activate(context as any);
 
     expect(window.createTreeView).toHaveBeenCalledOnce();
-    expect(commands.registerCommand).toHaveBeenCalledTimes(24);
-    expect((context as any).subscriptions).toHaveLength(25); // tree view + 24 commands
+    expect(commands.registerCommand).toHaveBeenCalledTimes(25);
+    expect((context as any).subscriptions).toHaveLength(26); // tree view + 25 commands
   });
 
   it('exercises every registered command handler at least once', async () => {
@@ -66,6 +66,8 @@ describe('activate', () => {
     await handlers.get('workspace-file-bookmarks.openAllInFolder')?.({ folder, bookmarks: [] });
     await handlers.get('workspace-file-bookmarks.setViewModeList')?.();
     await handlers.get('workspace-file-bookmarks.setViewModeTree')?.();
+    workspace.fs.stat.mockResolvedValue({});
+    await handlers.get('workspace-file-bookmarks.removeBrokenBookmarks')?.();
     window.showSaveDialog.mockResolvedValue(undefined);
     await handlers.get('workspace-file-bookmarks.exportBookmarks')?.();
     window.showOpenDialog.mockResolvedValue(undefined);
@@ -73,7 +75,7 @@ describe('activate', () => {
     window.showQuickPick.mockResolvedValue(undefined);
     await handlers.get('workspace-file-bookmarks.goToBookmark')?.();
 
-    expect(handlers.size).toBe(24);
+    expect(handlers.size).toBe(25);
   });
 });
 
