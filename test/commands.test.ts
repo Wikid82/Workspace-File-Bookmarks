@@ -28,6 +28,8 @@ import {
   resolveBookmarkTargets,
   revealBookmarkInExplorer,
   revealBookmarkInFileManager,
+  setFolderAppearance,
+  FolderGroupItem,
   type Bookmark,
   type BookmarkFolder,
 } from '../extension';
@@ -1131,5 +1133,57 @@ describe('copy path / reveal actions', () => {
       'revealFileInOS',
       expect.objectContaining({ fsPath: '/repo/src/a.ts' }),
     );
+  });
+});
+
+describe('setFolderAppearance', () => {
+  it('stores the chosen icon and color on the folder', async () => {
+    const store = newStore();
+    const folder = store.createFolder('Backend');
+    window.showQuickPick
+      .mockResolvedValueOnce({ label: '$(server) Server', iconId: 'server' })
+      .mockResolvedValueOnce({ label: 'Red', colorId: 'charts.red' });
+
+    await setFolderAppearance(store, new FolderGroupItem(folder, []));
+
+    expect(store.getAllFolders()[0]).toMatchObject({ icon: 'server', color: 'charts.red' });
+  });
+
+  it('clears the appearance when Default is chosen for both steps', async () => {
+    const store = newStore();
+    const folder = store.createFolder('Backend');
+    store.setFolderAppearance(folder.id, { icon: 'server', color: 'charts.red' });
+    window.showQuickPick
+      .mockResolvedValueOnce({ label: 'Default', iconId: undefined })
+      .mockResolvedValueOnce({ label: 'Default', colorId: undefined });
+
+    await setFolderAppearance(store, new FolderGroupItem(store.getAllFolders()[0], []));
+
+    const stored = store.getAllFolders()[0];
+    expect(stored).not.toHaveProperty('icon');
+    expect(stored).not.toHaveProperty('color');
+  });
+
+  it('leaves the folder untouched when the icon pick is cancelled', async () => {
+    const store = newStore();
+    const folder = store.createFolder('Backend');
+    window.showQuickPick.mockResolvedValueOnce(undefined);
+
+    await setFolderAppearance(store, new FolderGroupItem(folder, []));
+
+    expect(window.showQuickPick).toHaveBeenCalledOnce();
+    expect(store.getAllFolders()[0]).not.toHaveProperty('icon');
+  });
+
+  it('leaves the folder untouched when the color pick is cancelled', async () => {
+    const store = newStore();
+    const folder = store.createFolder('Backend');
+    window.showQuickPick
+      .mockResolvedValueOnce({ label: '$(server) Server', iconId: 'server' })
+      .mockResolvedValueOnce(undefined);
+
+    await setFolderAppearance(store, new FolderGroupItem(folder, []));
+
+    expect(store.getAllFolders()[0]).not.toHaveProperty('icon');
   });
 });

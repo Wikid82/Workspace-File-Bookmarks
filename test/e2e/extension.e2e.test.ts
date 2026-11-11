@@ -60,6 +60,7 @@ describe('Workspace File Bookmarks (e2e)', () => {
       'workspace-file-bookmarks.createSubfolder',
       'workspace-file-bookmarks.moveFolderToParent',
       'workspace-file-bookmarks.renameFolder',
+      'workspace-file-bookmarks.setFolderAppearance',
       'workspace-file-bookmarks.deleteFolder',
       'workspace-file-bookmarks.moveToFolder',
       'workspace-file-bookmarks.openAllInFolder',
@@ -400,5 +401,34 @@ describe('Workspace File Bookmarks (e2e)', () => {
     const item = { bookmark: store.getAllBookmarks()[0] };
 
     await vscode.commands.executeCommand('workspace-file-bookmarks.revealBookmarkInExplorer', item);
+  });
+
+  it('applies a custom icon and color to a folder via setFolderAppearance and the real tree', async () => {
+    const { store, provider } = await getApi();
+    const folder = store.createFolder('Backend');
+    const [node] = provider.getChildren() as FolderGroupItem[];
+
+    const originalShowQuickPick = vscode.window.showQuickPick;
+    try {
+      let call = 0;
+      (vscode.window as any).showQuickPick = async (items: any[]) =>
+        call++ === 0
+          ? items.find((i) => i.iconId === 'server')
+          : items.find((i) => i.colorId === 'charts.red');
+
+      await vscode.commands.executeCommand('workspace-file-bookmarks.setFolderAppearance', node);
+    } finally {
+      vscode.window.showQuickPick = originalShowQuickPick;
+    }
+
+    assert.deepEqual(
+      { icon: store.getAllFolders()[0].icon, color: store.getAllFolders()[0].color },
+      { icon: 'server', color: 'charts.red' },
+    );
+    const [updated] = provider.getChildren() as FolderGroupItem[];
+    const icon = updated.iconPath as vscode.ThemeIcon;
+    assert.equal(icon.id, 'server');
+    assert.equal((icon.color as vscode.ThemeColor).id, 'charts.red');
+    assert.equal(updated.folder.id, folder.id);
   });
 });
