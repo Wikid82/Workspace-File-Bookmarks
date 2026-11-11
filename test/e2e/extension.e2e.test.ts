@@ -60,14 +60,20 @@ describe('Workspace File Bookmarks (e2e)', () => {
       'workspace-file-bookmarks.createSubfolder',
       'workspace-file-bookmarks.moveFolderToParent',
       'workspace-file-bookmarks.renameFolder',
+      'workspace-file-bookmarks.setFolderAppearance',
       'workspace-file-bookmarks.deleteFolder',
       'workspace-file-bookmarks.moveToFolder',
       'workspace-file-bookmarks.openAllInFolder',
       'workspace-file-bookmarks.setViewModeList',
       'workspace-file-bookmarks.setViewModeTree',
+      'workspace-file-bookmarks.removeBrokenBookmarks',
       'workspace-file-bookmarks.exportBookmarks',
       'workspace-file-bookmarks.importBookmarks',
       'workspace-file-bookmarks.goToBookmark',
+      'workspace-file-bookmarks.copyBookmarkPath',
+      'workspace-file-bookmarks.copyBookmarkRelativePath',
+      'workspace-file-bookmarks.revealBookmarkInExplorer',
+      'workspace-file-bookmarks.revealBookmarkInFileManager',
     ]) {
       assert.ok(commands.includes(id), `expected command "${id}" to be registered`);
     }
@@ -296,5 +302,133 @@ describe('Workspace File Bookmarks (e2e)', () => {
     } finally {
       vscode.window.showQuickPick = originalShowQuickPick;
     }
+  });
+
+  it('marks a bookmark to a deleted file stale and sweeps it away with removeBrokenBookmarks', async () => {
+    const { store, provider } = await getApi();
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    store.addBookmark({
+      id: 'missing-1',
+      uri: fixtureUri('src/does-not-exist.ts').toString(),
+      label: 'does-not-exist.ts',
+      relativePath: 'src/does-not-exist.ts',
+      workspaceFolderName: 'workspace',
+      folderId: null,
+      createdAt: Date.now(),
+    });
+
+    const originalShowWarningMessage = vscode.window.showWarningMessage;
+    try {
+      (vscode.window as any).showWarningMessage = async () => undefined;
+      await vscode.commands.executeCommand('workspace-file-bookmarks.removeBrokenBookmarks');
+      const stale = (provider.getChildren() as BookmarkTreeItem[]).filter(
+        (n) => isBookmarkNode(n) && n.stale,
+      );
+      assert.deepEqual(
+        stale.map((n) => n.bookmark.id),
+        ['missing-1'],
+      );
+      assert.equal(store.getAllBookmarks().length, 2, 'declining must not remove anything');
+
+      (vscode.window as any).showWarningMessage = async () => 'Remove';
+      await vscode.commands.executeCommand('workspace-file-bookmarks.removeBrokenBookmarks');
+    } finally {
+      vscode.window.showWarningMessage = originalShowWarningMessage;
+    }
+
+    assert.deepEqual(
+      store.getAllBookmarks().map((b) => b.relativePath),
+      ['src/sample-a.ts'],
+    );
+  });
+
+  it('removes and moves every bookmark in a multi-selection via the tree commands', async () => {
+    const { store, provider } = await getApi();
+    for (const file of ['src/sample-a.ts', 'src/sample-b.ts']) {
+      const document = await vscode.workspace.openTextDocument(fixtureUri(file));
+      await vscode.window.showTextDocument(document);
+      await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    }
+    assert.equal(store.getAllBookmarks().length, 2);
+    const folder = store.createFolder('Batch');
+    const items = (provider.getChildren() as Array<BookmarkTreeItem | FolderGroupItem>).filter(
+      isBookmarkNode,
+    );
+    assert.equal(items.length, 2);
+
+    const originalShowQuickPick = vscode.window.showQuickPick;
+    try {
+      (vscode.window as any).showQuickPick = async () => 'Batch';
+      await vscode.commands.executeCommand(
+        'workspace-file-bookmarks.moveToFolder',
+        items[0],
+        items,
+      );
+    } finally {
+      vscode.window.showQuickPick = originalShowQuickPick;
+    }
+    assert.ok(store.getAllBookmarks().every((b) => b.folderId === folder.id));
+
+    await vscode.commands.executeCommand(
+      'workspace-file-bookmarks.removeBookmark',
+      items[0],
+      items,
+    );
+    assert.equal(store.getAllBookmarks().length, 0);
+  });
+
+  it('copies the absolute and relative path of a bookmark to the clipboard', async () => {
+    const { store } = await getApi();
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    const item = { bookmark: store.getAllBookmarks()[0] };
+
+    await vscode.commands.executeCommand('workspace-file-bookmarks.copyBookmarkPath', item);
+    assert.equal(await vscode.env.clipboard.readText(), document.uri.fsPath);
+
+    await vscode.commands.executeCommand('workspace-file-bookmarks.copyBookmarkRelativePath', item);
+    assert.equal(await vscode.env.clipboard.readText(), 'src/sample-a.ts');
+  });
+
+  it("reveals a bookmark in VS Code's Explorer without error", async () => {
+    const { store } = await getApi();
+    const document = await vscode.workspace.openTextDocument(fixtureUri('src/sample-a.ts'));
+    await vscode.window.showTextDocument(document);
+    await vscode.commands.executeCommand('workspace-file-bookmarks.addBookmark');
+    const item = { bookmark: store.getAllBookmarks()[0] };
+
+    await vscode.commands.executeCommand('workspace-file-bookmarks.revealBookmarkInExplorer', item);
+  });
+
+  it('applies a custom icon and color to a folder via setFolderAppearance and the real tree', async () => {
+    const { store, provider } = await getApi();
+    const folder = store.createFolder('Backend');
+    const [node] = provider.getChildren() as FolderGroupItem[];
+
+    const originalShowQuickPick = vscode.window.showQuickPick;
+    try {
+      let call = 0;
+      (vscode.window as any).showQuickPick = async (items: any[]) =>
+        call++ === 0
+          ? items.find((i) => i.iconId === 'server')
+          : items.find((i) => i.colorId === 'charts.red');
+
+      await vscode.commands.executeCommand('workspace-file-bookmarks.setFolderAppearance', node);
+    } finally {
+      vscode.window.showQuickPick = originalShowQuickPick;
+    }
+
+    assert.deepEqual(
+      { icon: store.getAllFolders()[0].icon, color: store.getAllFolders()[0].color },
+      { icon: 'server', color: 'charts.red' },
+    );
+    const [updated] = provider.getChildren() as FolderGroupItem[];
+    const icon = updated.iconPath as vscode.ThemeIcon;
+    assert.equal(icon.id, 'server');
+    assert.equal((icon.color as vscode.ThemeColor).id, 'charts.red');
+    assert.equal(updated.folder.id, folder.id);
   });
 });

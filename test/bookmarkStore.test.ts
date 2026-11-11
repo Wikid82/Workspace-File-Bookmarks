@@ -481,3 +481,108 @@ describe('mergeImport', () => {
     expect(store.getAllBookmarks()).toHaveLength(1);
   });
 });
+
+describe('stale bookmark tracking', () => {
+  it('only fires a change event when the stale set actually changes', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'a' }));
+    let changes = 0;
+    store.onDidChange(() => changes++);
+
+    store.markStale('a');
+    store.markStale('a');
+    expect(changes).toBe(1);
+
+    store.clearStale('a');
+    expect(store.isStale('a')).toBe(false);
+    expect(changes).toBe(2);
+  });
+
+  it('removeStaleBookmarks drops only stale bookmarks and resets the stale set', () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark({ id: 'a', uri: 'file:///repo/a.ts' }));
+    store.addBookmark(makeBookmark({ id: 'b', uri: 'file:///repo/b.ts' }));
+    store.markStale('a');
+
+    store.removeStaleBookmarks();
+
+    expect(store.getAllBookmarks().map((b) => b.id)).toEqual(['b']);
+    expect(store.isStale('a')).toBe(false);
+  });
+});
+
+describe('bulk bookmark operations', () => {
+  it('removeBookmarks removes only the named bookmarks in a single change event', () => {
+    const store = newStore();
+    for (const id of ['a', 'b', 'c']) {
+      store.addBookmark(makeBookmark({ id, uri: `file:///repo/${id}.ts` }));
+    }
+    let changes = 0;
+    store.onDidChange(() => changes++);
+
+    store.removeBookmarks(['a', 'c']);
+
+    expect(store.getAllBookmarks().map((b) => b.id)).toEqual(['b']);
+    expect(changes).toBe(1);
+  });
+
+  it('moveBookmarksToFolder moves only the named bookmarks in a single change event', () => {
+    const store = newStore();
+    for (const id of ['a', 'b', 'c']) {
+      store.addBookmark(makeBookmark({ id, uri: `file:///repo/${id}.ts` }));
+    }
+    const folder = store.createFolder('Backend');
+    let changes = 0;
+    store.onDidChange(() => changes++);
+
+    store.moveBookmarksToFolder(['a', 'b'], folder.id);
+
+    const byId = new Map(store.getAllBookmarks().map((b) => [b.id, b.folderId]));
+    expect(byId.get('a')).toBe(folder.id);
+    expect(byId.get('b')).toBe(folder.id);
+    expect(byId.get('c')).toBeNull();
+    expect(changes).toBe(1);
+  });
+});
+
+describe('setFolderAppearance', () => {
+  it('sets icon and color on only the targeted folder', () => {
+    const store = newStore();
+    const a = store.createFolder('A');
+    const b = store.createFolder('B');
+
+    store.setFolderAppearance(a.id, { icon: 'bug', color: 'charts.green' });
+
+    const folders = store.getAllFolders();
+    expect(folders.find((f) => f.id === a.id)).toMatchObject({
+      icon: 'bug',
+      color: 'charts.green',
+    });
+    expect(folders.find((f) => f.id === b.id)).not.toHaveProperty('icon');
+  });
+
+  it('clears icon and color when called with no values', () => {
+    const store = newStore();
+    const a = store.createFolder('A');
+    store.setFolderAppearance(a.id, { icon: 'bug', color: 'charts.green' });
+
+    store.setFolderAppearance(a.id, {});
+
+    expect(store.getAllFolders()[0]).toEqual(
+      expect.not.objectContaining({ icon: expect.anything(), color: expect.anything() }),
+    );
+    expect(store.getAllFolders()[0]).not.toHaveProperty('icon');
+    expect(store.getAllFolders()[0]).not.toHaveProperty('color');
+  });
+
+  it('preserves icon and color through mergeImport', () => {
+    const store = newStore();
+
+    store.mergeImport(
+      [],
+      [{ id: 'x', name: 'Imported', createdAt: 0, icon: 'rocket', color: 'charts.blue' }],
+    );
+
+    expect(store.getAllFolders()[0]).toMatchObject({ icon: 'rocket', color: 'charts.blue' });
+  });
+});

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { activate, deactivate } from '../extension';
 import { createFakeContext } from './fakeContext';
-import { commands, Position, Selection, Uri, window } from './vscode-mock';
+import { commands, Position, Selection, Uri, window, workspace } from './vscode-mock';
 
 describe('activate', () => {
   it('creates the tree view and registers every command', () => {
@@ -11,8 +11,12 @@ describe('activate', () => {
     activate(context as any);
 
     expect(window.createTreeView).toHaveBeenCalledOnce();
-    expect(commands.registerCommand).toHaveBeenCalledTimes(24);
-    expect((context as any).subscriptions).toHaveLength(25); // tree view + 24 commands
+    expect(window.createTreeView).toHaveBeenCalledWith(
+      'workspace-file-bookmarks-view',
+      expect.objectContaining({ canSelectMany: true }),
+    );
+    expect(commands.registerCommand).toHaveBeenCalledTimes(30);
+    expect((context as any).subscriptions).toHaveLength(31); // tree view + 30 commands
   });
 
   it('exercises every registered command handler at least once', async () => {
@@ -57,6 +61,8 @@ describe('activate', () => {
     await handlers.get('workspace-file-bookmarks.createSubfolder')?.({ folder });
     await handlers.get('workspace-file-bookmarks.moveFolderToParent')?.({ folder });
     await handlers.get('workspace-file-bookmarks.renameFolder')?.({ folder });
+    window.showQuickPick.mockResolvedValue(undefined);
+    await handlers.get('workspace-file-bookmarks.setFolderAppearance')?.({ folder });
     await handlers.get('workspace-file-bookmarks.deleteFolder')?.({
       folder,
       bookmarks: [],
@@ -66,14 +72,21 @@ describe('activate', () => {
     await handlers.get('workspace-file-bookmarks.openAllInFolder')?.({ folder, bookmarks: [] });
     await handlers.get('workspace-file-bookmarks.setViewModeList')?.();
     await handlers.get('workspace-file-bookmarks.setViewModeTree')?.();
+    workspace.fs.stat.mockResolvedValue({});
+    await handlers.get('workspace-file-bookmarks.removeBrokenBookmarks')?.();
     window.showSaveDialog.mockResolvedValue(undefined);
     await handlers.get('workspace-file-bookmarks.exportBookmarks')?.();
     window.showOpenDialog.mockResolvedValue(undefined);
     await handlers.get('workspace-file-bookmarks.importBookmarks')?.();
     window.showQuickPick.mockResolvedValue(undefined);
     await handlers.get('workspace-file-bookmarks.goToBookmark')?.();
+    await handlers.get('workspace-file-bookmarks.copyBookmarkPath')?.({ bookmark });
+    await handlers.get('workspace-file-bookmarks.copyBookmarkRelativePath')?.({ bookmark });
+    await handlers.get('workspace-file-bookmarks.revealBookmarkInExplorer')?.({ bookmark });
+    await handlers.get('workspace-file-bookmarks.revealBookmarkInFileManager')?.({ bookmark });
 
-    expect(handlers.size).toBe(24);
+    expect(commands.registerCommand).toHaveBeenCalledTimes(30);
+    expect((context as any).subscriptions).toHaveLength(31); // tree view + 30 commands
   });
 });
 

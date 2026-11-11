@@ -77,8 +77,15 @@ export class TreeItem {
   ) {}
 }
 
-export class ThemeIcon {
+export class ThemeColor {
   constructor(public id: string) {}
+}
+
+export class ThemeIcon {
+  constructor(
+    public id: string,
+    public color?: ThemeColor,
+  ) {}
 }
 
 export class DataTransferItem {
@@ -165,10 +172,17 @@ export const workspace = {
   fs: {
     readFile: vi.fn(),
     writeFile: vi.fn(),
+    stat: vi.fn(),
   },
 };
 
 export const commands = {
   registerCommand: vi.fn(() => ({ dispose: () => {} })),
   executeCommand: vi.fn(),
+};
+
+export const env = {
+  clipboard: {
+    writeText: vi.fn(() => Promise.resolve()),
+  },
 };

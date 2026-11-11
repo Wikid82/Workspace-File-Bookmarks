@@ -31,7 +31,41 @@ export interface BookmarkFolder {
   createdAt: number;
   order?: number;
   parentId?: string | null;
+  /** A codicon id (e.g. `server`), shown instead of the default folder icon. */
+  icon?: string;
+  /** A theme color id (e.g. `charts.red`) tinting the folder's icon. */
+  color?: string;
 }
+
+/** Codicons offered when customizing a folder's icon. */
+export const FOLDER_ICON_CHOICES: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'folder', label: 'Folder' },
+  { id: 'server', label: 'Server' },
+  { id: 'database', label: 'Database' },
+  { id: 'beaker', label: 'Beaker' },
+  { id: 'bug', label: 'Bug' },
+  { id: 'checklist', label: 'Checklist' },
+  { id: 'eye', label: 'In Review' },
+  { id: 'flame', label: 'Flame' },
+  { id: 'gear', label: 'Gear' },
+  { id: 'globe', label: 'Globe' },
+  { id: 'heart', label: 'Heart' },
+  { id: 'lock', label: 'Lock' },
+  { id: 'rocket', label: 'Rocket' },
+  { id: 'star-full', label: 'Star' },
+  { id: 'tag', label: 'Tag' },
+  { id: 'tools', label: 'Tools' },
+];
+
+/** Theme colors offered when customizing a folder's icon color. */
+export const FOLDER_COLOR_CHOICES: ReadonlyArray<{ id: string; label: string }> = [
+  { id: 'charts.red', label: 'Red' },
+  { id: 'charts.orange', label: 'Orange' },
+  { id: 'charts.yellow', label: 'Yellow' },
+  { id: 'charts.green', label: 'Green' },
+  { id: 'charts.blue', label: 'Blue' },
+  { id: 'charts.purple', label: 'Purple' },
+];
 
 /** Folders may nest up to this many levels deep (root-level folders are depth 1). */
 export const MAX_FOLDER_DEPTH = 3;
@@ -208,6 +242,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const treeView = vscode.window.createTreeView('workspace-file-bookmarks-view', {
     treeDataProvider: provider,
     showCollapseAll: true,
+    canSelectMany: true,
     dragAndDropController: provider,
   });
 
@@ -243,7 +278,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.removeBookmark',
-      (item: BookmarkTreeItem) => store.removeBookmark(item.bookmark.id),
+      (item: BookmarkTreeItem, selection?: readonly TreeNode[]) =>
+        store.removeBookmarks(resolveBookmarkTargets(item, selection).map((b) => b.id)),
     ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.renameBookmark',
@@ -265,7 +301,10 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       provider.setSearchFilter(null),
     ),
     vscode.commands.registerCommand('workspace-file-bookmarks.openBookmark', (bookmark: Bookmark) =>
-      openBookmark(bookmark),
+      openBookmark(bookmark, store),
+    ),
+    vscode.commands.registerCommand('workspace-file-bookmarks.removeBrokenBookmarks', () =>
+      removeBrokenBookmarks(store),
     ),
     vscode.commands.registerCommand('workspace-file-bookmarks.createFolder', () =>
       createFolder(store),
@@ -283,12 +322,17 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
       (item: FolderGroupItem) => renameFolder(store, item),
     ),
     vscode.commands.registerCommand(
+      'workspace-file-bookmarks.setFolderAppearance',
+      (item: FolderGroupItem) => setFolderAppearance(store, item),
+    ),
+    vscode.commands.registerCommand(
       'workspace-file-bookmarks.deleteFolder',
       (item: FolderGroupItem) => deleteFolder(store, item),
     ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.moveToFolder',
-      (item: BookmarkTreeItem) => moveToFolder(store, item),
+      (item: BookmarkTreeItem, selection?: readonly TreeNode[]) =>
+        moveToFolder(store, item, selection),
     ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.openAllInFolder',
@@ -309,6 +353,22 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     vscode.commands.registerCommand('workspace-file-bookmarks.goToBookmark', () =>
       goToBookmark(store),
     ),
+    vscode.commands.registerCommand(
+      'workspace-file-bookmarks.copyBookmarkPath',
+      (item: BookmarkTreeItem) => copyBookmarkPath(item.bookmark),
+    ),
+    vscode.commands.registerCommand(
+      'workspace-file-bookmarks.copyBookmarkRelativePath',
+      (item: BookmarkTreeItem) => copyBookmarkRelativePath(item.bookmark),
+    ),
+    vscode.commands.registerCommand(
+      'workspace-file-bookmarks.revealBookmarkInExplorer',
+      (item: BookmarkTreeItem) => revealBookmarkInExplorer(item.bookmark),
+    ),
+    vscode.commands.registerCommand(
+      'workspace-file-bookmarks.revealBookmarkInFileManager',
+      (item: BookmarkTreeItem) => revealBookmarkInFileManager(item.bookmark),
+    ),
   );
 
   return { store, provider };
@@ -320,7 +380,39 @@ export class BookmarkStore {
   private readonly _onDidChange = new vscode.EventEmitter<void>();
   readonly onDidChange = this._onDidChange.event;
 
+  /** Ids of bookmarks whose target was found missing. In-memory only: re-derived lazily, never persisted. */
+  private staleIds = new Set<string>();
+
   constructor(private readonly context: vscode.ExtensionContext) {}
+
+  isStale(id: string): boolean {
+    return this.staleIds.has(id);
+  }
+
+  /** Replaces the set of stale bookmark ids and refreshes the tree if it changed. */
+  setStaleIds(ids: Iterable<string>) {
+    const next = new Set(ids);
+    if (next.size === this.staleIds.size && [...next].every((id) => this.staleIds.has(id))) {
+      return;
+    }
+    this.staleIds = next;
+    this._onDidChange.fire();
+  }
+
+  /** Removes every bookmark currently marked stale, in a single write. */
+  removeStaleBookmarks() {
+    const stale = this.staleIds;
+    this.staleIds = new Set();
+    this.setBookmarks(this.getAllBookmarks().filter((b) => !stale.has(b.id)));
+  }
+
+  markStale(id: string) {
+    this.setStaleIds([...this.staleIds, id]);
+  }
+
+  clearStale(id: string) {
+    this.setStaleIds([...this.staleIds].filter((staleId) => staleId !== id));
+  }
 
   getAllBookmarks(): Bookmark[] {
     return this.context.workspaceState.get<Bookmark[]>(STORAGE_KEY_BOOKMARKS, []);
@@ -350,8 +442,22 @@ export class BookmarkStore {
     this.setBookmarks(this.getAllBookmarks().filter((b) => b.id !== id));
   }
 
+  /** Removes several bookmarks in one write, so the tree refreshes once. */
+  removeBookmarks(ids: string[]) {
+    const idSet = new Set(ids);
+    this.setBookmarks(this.getAllBookmarks().filter((b) => !idSet.has(b.id)));
+  }
+
   moveBookmarkToFolder(id: string, folderId: string | null) {
-    this.setBookmarks(this.getAllBookmarks().map((b) => (b.id === id ? { ...b, folderId } : b)));
+    this.moveBookmarksToFolder([id], folderId);
+  }
+
+  /** Moves several bookmarks to a folder (or the root) in one write. */
+  moveBookmarksToFolder(ids: string[], folderId: string | null) {
+    const idSet = new Set(ids);
+    this.setBookmarks(
+      this.getAllBookmarks().map((b) => (idSet.has(b.id) ? { ...b, folderId } : b)),
+    );
   }
 
   renameBookmark(id: string, label: string) {
@@ -406,6 +512,27 @@ export class BookmarkStore {
 
   renameFolder(id: string, name: string) {
     this.setFolders(this.getAllFolders().map((f) => (f.id === id ? { ...f, name } : f)));
+  }
+
+  /** Sets a folder's icon and/or color; `undefined` for either clears it back to the default. */
+  setFolderAppearance(id: string, appearance: { icon?: string; color?: string }) {
+    this.setFolders(
+      this.getAllFolders().map((f) => {
+        if (f.id !== id) {
+          return f;
+        }
+        const updated: BookmarkFolder = { ...f };
+        delete updated.icon;
+        delete updated.color;
+        if (appearance.icon) {
+          updated.icon = appearance.icon;
+        }
+        if (appearance.color) {
+          updated.color = appearance.color;
+        }
+        return updated;
+      }),
+    );
   }
 
   moveFolderToParent(id: string, parentId: string | null) {
@@ -486,7 +613,10 @@ export class FolderGroupItem extends vscode.TreeItem {
   ) {
     super(folder.name, vscode.TreeItemCollapsibleState.Expanded);
     this.contextValue = 'bookmarkFolder';
-    this.iconPath = new vscode.ThemeIcon('folder');
+    this.iconPath = new vscode.ThemeIcon(
+      folder.icon ?? 'folder',
+      folder.color ? new vscode.ThemeColor(folder.color) : undefined,
+    );
     this.description =
       childFolders.length > 0
         ? `${bookmarks.length} • ${childFolders.length} subfolder${childFolders.length === 1 ? '' : 's'}`
@@ -498,14 +628,18 @@ export class BookmarkTreeItem extends vscode.TreeItem {
   constructor(
     public readonly bookmark: Bookmark,
     descriptionParts: string[],
+    public readonly stale = false,
   ) {
     super(bookmark.label, vscode.TreeItemCollapsibleState.None);
-    this.description = descriptionParts.join(' • ');
-    this.tooltip =
+    this.description = (stale ? ['missing', ...descriptionParts] : descriptionParts).join(' • ');
+    const location =
       bookmark.lineStart !== undefined
         ? `${bookmark.relativePath}:${formatLineRange({ lineStart: bookmark.lineStart, lineEnd: bookmark.lineEnd })}`
         : bookmark.relativePath;
-    this.iconPath = new vscode.ThemeIcon('bookmark');
+    this.tooltip = stale ? `${location}\nThis file no longer exists.` : location;
+    this.iconPath = stale
+      ? new vscode.ThemeIcon('warning', new vscode.ThemeColor('list.warningForeground'))
+      : new vscode.ThemeIcon('bookmark');
     this.contextValue = 'bookmarkItem';
     this.command = {
       command: 'workspace-file-bookmarks.openBookmark',
@@ -587,16 +721,19 @@ export class BookmarksTreeProvider
       bookmarks = bookmarks.filter((b) => matchesSearchFilter(b, searchFilter));
     }
 
+    const makeItem = (b: Bookmark, folderName: string | null) =>
+      new BookmarkTreeItem(
+        b,
+        describeBookmark(b, isMultiRoot, folderName),
+        this.store.isStale(b.id),
+      );
+
     if (this.viewMode === 'list') {
       if (element) {
         return [];
       }
-      return sortByOrder(bookmarks, bookmarkFallbackCompare).map(
-        (b) =>
-          new BookmarkTreeItem(
-            b,
-            describeBookmark(b, isMultiRoot, folderBreadcrumb(folders, b.folderId ?? '') || null),
-          ),
+      return sortByOrder(bookmarks, bookmarkFallbackCompare).map((b) =>
+        makeItem(b, folderBreadcrumb(folders, b.folderId ?? '') || null),
       );
     }
 
@@ -611,8 +748,8 @@ export class BookmarksTreeProvider
       const childFolderNodes = sortByOrder(element.childFolders, folderFallbackCompare).map(
         buildFolderNode,
       );
-      const childBookmarkNodes = sortByOrder(element.bookmarks, bookmarkFallbackCompare).map(
-        (b) => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)),
+      const childBookmarkNodes = sortByOrder(element.bookmarks, bookmarkFallbackCompare).map((b) =>
+        makeItem(b, null),
       );
       return [...childFolderNodes, ...childBookmarkNodes];
     }
@@ -629,7 +766,7 @@ export class BookmarksTreeProvider
     const ungrouped = sortByOrder(
       bookmarks.filter((b) => !b.folderId),
       bookmarkFallbackCompare,
-    ).map((b) => new BookmarkTreeItem(b, describeBookmark(b, isMultiRoot, null)));
+    ).map((b) => makeItem(b, null));
 
     return [...folderNodes, ...ungrouped];
   }
@@ -771,7 +908,22 @@ export function addBookmarksForUris(
   }
 }
 
-export async function openBookmark(bookmark: Bookmark) {
+/** Whether the file a bookmark points at still exists (a lightweight `fs.stat`, no content read). */
+export async function bookmarkTargetExists(bookmark: Bookmark): Promise<boolean> {
+  try {
+    await vscode.workspace.fs.stat(vscode.Uri.parse(bookmark.uri));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Opens a bookmark. When a `store` is given, a failed open whose target no longer exists marks the
+ * bookmark stale (greyed with a warning icon in the tree), and a successful open clears any stale
+ * mark. A failure for another reason (e.g. a binary file) is reported but not marked stale.
+ */
+export async function openBookmark(bookmark: Bookmark, store?: BookmarkStore) {
   try {
     const uri = vscode.Uri.parse(bookmark.uri);
     const document = await vscode.workspace.openTextDocument(uri);
@@ -783,11 +935,70 @@ export async function openBookmark(bookmark: Bookmark) {
       editor.selection = new vscode.Selection(range.start, range.end);
       editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
     }
+    store?.clearStale(bookmark.id);
   } catch {
+    if (store && !(await bookmarkTargetExists(bookmark))) {
+      store.markStale(bookmark.id);
+    }
     vscode.window.showErrorMessage(
       `Could not open "${bookmark.relativePath}". The file may have been moved or deleted.`,
     );
   }
+}
+
+/**
+ * Sweeps every bookmark with one `fs.stat` per distinct file, marks the missing ones stale, and —
+ * after a confirmation showing the count — removes them. Declining leaves them marked so they
+ * stay visible in the tree. On-demand only; nothing polls in the background.
+ */
+export async function removeBrokenBookmarks(store: BookmarkStore): Promise<void> {
+  const bookmarks = store.getAllBookmarks();
+  const existsByUri = new Map<string, boolean>();
+  await Promise.all(
+    [...new Set(bookmarks.map((b) => b.uri))].map(async (uri) => {
+      const exists = await bookmarkTargetExists(bookmarks.find((b) => b.uri === uri) as Bookmark);
+      existsByUri.set(uri, exists);
+    }),
+  );
+
+  const broken = bookmarks.filter((b) => existsByUri.get(b.uri) === false);
+  store.setStaleIds(broken.map((b) => b.id));
+
+  if (broken.length === 0) {
+    vscode.window.showInformationMessage('No broken bookmarks found.');
+    return;
+  }
+
+  const confirm = await vscode.window.showWarningMessage(
+    `Remove ${broken.length} broken bookmark(s) whose files no longer exist?`,
+    { modal: true },
+    'Remove',
+  );
+  if (confirm !== 'Remove') {
+    return;
+  }
+  store.removeStaleBookmarks();
+  vscode.window.showInformationMessage(`Removed ${broken.length} broken bookmark(s).`);
+}
+
+/** Copies the bookmarked file's absolute path to the clipboard. */
+export async function copyBookmarkPath(bookmark: Bookmark): Promise<void> {
+  await vscode.env.clipboard.writeText(vscode.Uri.parse(bookmark.uri).fsPath);
+}
+
+/** Copies the bookmarked file's workspace-relative path to the clipboard. */
+export async function copyBookmarkRelativePath(bookmark: Bookmark): Promise<void> {
+  await vscode.env.clipboard.writeText(bookmark.relativePath);
+}
+
+/** Reveals the bookmarked file in VS Code's Explorer view. */
+export async function revealBookmarkInExplorer(bookmark: Bookmark): Promise<void> {
+  await vscode.commands.executeCommand('revealInExplorer', vscode.Uri.parse(bookmark.uri));
+}
+
+/** Reveals the bookmarked file in the OS file manager. */
+export async function revealBookmarkInFileManager(bookmark: Bookmark): Promise<void> {
+  await vscode.commands.executeCommand('revealFileInOS', vscode.Uri.parse(bookmark.uri));
 }
 
 export async function openAllInFolder(store: BookmarkStore, item: FolderGroupItem) {
@@ -796,7 +1007,7 @@ export async function openAllInFolder(store: BookmarkStore, item: FolderGroupIte
     return;
   }
   for (const bookmark of item.bookmarks) {
-    await openBookmark(bookmark);
+    await openBookmark(bookmark, store);
   }
 }
 
@@ -854,6 +1065,38 @@ export async function renameFolder(store: BookmarkStore, item: FolderGroupItem) 
   if (name) {
     store.renameFolder(item.folder.id, name.trim());
   }
+}
+
+const DEFAULT_APPEARANCE_PICK = '$(discard) Default';
+
+/** Two-step quick-pick (icon, then color) that stores the chosen look on the folder. Cancelling either step leaves the folder unchanged. */
+export async function setFolderAppearance(store: BookmarkStore, item: FolderGroupItem) {
+  const iconItems = [
+    { label: DEFAULT_APPEARANCE_PICK, iconId: undefined as string | undefined },
+    ...FOLDER_ICON_CHOICES.map((c) => ({ label: `$(${c.id}) ${c.label}`, iconId: c.id })),
+  ];
+  const pickedIcon = await vscode.window.showQuickPick(iconItems, {
+    placeHolder: `Icon for "${item.folder.name}"`,
+  });
+  if (!pickedIcon) {
+    return;
+  }
+
+  const colorItems = [
+    { label: DEFAULT_APPEARANCE_PICK, colorId: undefined as string | undefined },
+    ...FOLDER_COLOR_CHOICES.map((c) => ({ label: c.label, colorId: c.id })),
+  ];
+  const pickedColor = await vscode.window.showQuickPick(colorItems, {
+    placeHolder: `Color for "${item.folder.name}"`,
+  });
+  if (!pickedColor) {
+    return;
+  }
+
+  store.setFolderAppearance(item.folder.id, {
+    icon: pickedIcon.iconId,
+    color: pickedColor.colorId,
+  });
 }
 
 export async function renameBookmark(store: BookmarkStore, item: BookmarkTreeItem) {
@@ -1136,12 +1379,41 @@ export function dropBookmark(
   store.reorderBookmarks(computeReorderedIds(scope, draggedId, beforeId, bookmarkFallbackCompare));
 }
 
-export async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
-  const folderId = await pickFolder(store, `Move "${item.bookmark.label}" to...`);
+/**
+ * The bookmarks a tree command should act on. When the command is invoked from a multi-selected
+ * context menu, VS Code passes the clicked item plus the whole selection; if the clicked item is
+ * part of that selection the action applies to every selected bookmark (folders in the selection
+ * are ignored), otherwise just to the clicked item.
+ */
+export function resolveBookmarkTargets(
+  item: BookmarkTreeItem,
+  selection?: readonly TreeNode[],
+): Bookmark[] {
+  const selected = (selection ?? []).filter((node): node is BookmarkTreeItem => 'bookmark' in node);
+  if (selected.length > 1 && selected.some((n) => n.bookmark.id === item.bookmark.id)) {
+    return selected.map((n) => n.bookmark);
+  }
+  return [item.bookmark];
+}
+
+export async function moveToFolder(
+  store: BookmarkStore,
+  item: BookmarkTreeItem,
+  selection?: readonly TreeNode[],
+) {
+  const targets = resolveBookmarkTargets(item, selection);
+  const placeHolder =
+    targets.length > 1
+      ? `Move ${targets.length} bookmarks to...`
+      : `Move "${item.bookmark.label}" to...`;
+  const folderId = await pickFolder(store, placeHolder);
   if (folderId === undefined) {
     return;
   }
-  store.moveBookmarkToFolder(item.bookmark.id, folderId);
+  store.moveBookmarksToFolder(
+    targets.map((b) => b.id),
+    folderId,
+  );
 }
 
 /** Writes all bookmarks and folders to a JSON file the user picks via a save dialog. */
@@ -1283,6 +1555,6 @@ export async function goToBookmark(store: BookmarkStore): Promise<void> {
     placeHolder: 'Go to bookmark',
   });
   if (picked) {
-    await openBookmark(picked.bookmark);
+    await openBookmark(picked.bookmark, store);
   }
 }

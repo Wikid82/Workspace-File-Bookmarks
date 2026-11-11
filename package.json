@@ -32,7 +32,7 @@
   },
   "homepage": "https://github.com/Wikid82/Workspace-File-Bookmarks#readme",
   "engines": {
-    "vscode": "^1.145.0"
+    "vscode": "^1.146.0"
   },
   "activationEvents": [],
   "main": "./dist/extension.cjs",
@@ -149,6 +149,11 @@
         "category": "Workspace File Bookmarks"
       },
       {
+        "command": "workspace-file-bookmarks.setFolderAppearance",
+        "title": "Set Folder Icon and Color...",
+        "category": "Workspace File Bookmarks"
+      },
+      {
         "command": "workspace-file-bookmarks.deleteFolder",
         "title": "Delete Folder",
         "category": "Workspace File Bookmarks",
@@ -178,6 +183,12 @@
         "icon": "$(list-tree)"
       },
       {
+        "command": "workspace-file-bookmarks.removeBrokenBookmarks",
+        "title": "Remove Broken Bookmarks...",
+        "category": "Workspace File Bookmarks",
+        "icon": "$(warning)"
+      },
+      {
         "command": "workspace-file-bookmarks.exportBookmarks",
         "title": "Export Bookmarks...",
         "category": "Workspace File Bookmarks",
@@ -194,6 +205,26 @@
         "title": "Go to Bookmark...",
         "category": "Workspace File Bookmarks",
         "icon": "$(go-to-file)"
+      },
+      {
+        "command": "workspace-file-bookmarks.copyBookmarkPath",
+        "title": "Copy Path",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.copyBookmarkRelativePath",
+        "title": "Copy Relative Path",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.revealBookmarkInExplorer",
+        "title": "Reveal in Explorer",
+        "category": "Workspace File Bookmarks"
+      },
+      {
+        "command": "workspace-file-bookmarks.revealBookmarkInFileManager",
+        "title": "Reveal in File Manager",
+        "category": "Workspace File Bookmarks"
       }
     ],
     "menus": {
@@ -244,6 +275,11 @@
           "group": "navigation@5"
         },
         {
+          "command": "workspace-file-bookmarks.removeBrokenBookmarks",
+          "when": "view == workspace-file-bookmarks-view",
+          "group": "8_maintenance@1"
+        },
+        {
           "command": "workspace-file-bookmarks.exportBookmarks",
           "when": "view == workspace-file-bookmarks-view",
           "group": "9_data@1"
@@ -276,6 +312,26 @@
           "group": "1_modification"
         },
         {
+          "command": "workspace-file-bookmarks.revealBookmarkInExplorer",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "2_reveal@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.revealBookmarkInFileManager",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "2_reveal@2"
+        },
+        {
+          "command": "workspace-file-bookmarks.copyBookmarkPath",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "3_copy@1"
+        },
+        {
+          "command": "workspace-file-bookmarks.copyBookmarkRelativePath",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkItem",
+          "group": "3_copy@2"
+        },
+        {
           "command": "workspace-file-bookmarks.openAllInFolder",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
           "group": "inline@1"
@@ -297,6 +353,11 @@
         },
         {
           "command": "workspace-file-bookmarks.moveFolderToParent",
+          "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
+          "group": "1_modification"
+        },
+        {
+          "command": "workspace-file-bookmarks.setFolderAppearance",
           "when": "view == workspace-file-bookmarks-view && viewItem == bookmarkFolder",
           "group": "1_modification"
         }
@@ -360,8 +421,11 @@
     "@eslint/js": "^10.0.1",
     "@types/mocha": "^10.0.10",
     "@types/node": "^26.6.6",
-    "@types/vscode": "^1.145.0",
-    "@typescript/native": "npm:typescript@^7.1.0-dev.20261108.1",
+    "@types/vscode": "^1.146.0",
+    "@typescript-eslint/eslint-plugin": "^8.72.2",
+    "@typescript-eslint/parser": "^8.72.2",
+    "@typescript-eslint/utils": "^8.72.2",
+    "@typescript/native": "npm:typescript@^7.1.0-dev.20261111.1",
     "@vitest/coverage-istanbul": "^5.1.0",
     "@vitest/coverage-v8": "^5.1.0",
     "@vitest/eslint-plugin": "^1.6.28",
@@ -374,10 +438,10 @@
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "lefthook": "^2.2.2",
-    "prettier": "^3.9.10",
+    "prettier": "^3.10.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript-eslint": "^8.72.1",
-    "vite": "^8.3.6",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.8",
     "vitest": "^5.1.0"
   },
   "allowScripts": {

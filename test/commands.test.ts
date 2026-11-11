@@ -5,6 +5,8 @@ import {
   addActiveSelectionBookmark,
   addBookmarksForUris,
   addBookmarksToFolder,
+  copyBookmarkPath,
+  copyBookmarkRelativePath,
   createFolder,
   createSubfolder,
   deleteFolder,
@@ -21,12 +23,18 @@ import {
   pickFolder,
   pickParentFolder,
   renameBookmark,
+  removeBrokenBookmarks,
   renameFolder,
+  resolveBookmarkTargets,
+  revealBookmarkInExplorer,
+  revealBookmarkInFileManager,
+  setFolderAppearance,
+  FolderGroupItem,
   type Bookmark,
   type BookmarkFolder,
 } from '../extension';
 import { createFakeContext } from './fakeContext';
-import { Position, Selection, Uri, window, workspace } from './vscode-mock';
+import { Position, Selection, Uri, commands, env, window, workspace } from './vscode-mock';
 import type { InputBox } from './vscode-mock';
 
 function newStore() {
@@ -189,6 +197,44 @@ describe('openBookmark', () => {
     await openBookmark(makeBookmark());
 
     expect(window.showErrorMessage).toHaveBeenCalledOnce();
+  });
+
+  it('marks the bookmark stale when the open fails because the file is gone', async () => {
+    const store = newStore();
+    const bookmark = makeBookmark();
+    store.addBookmark(bookmark);
+    workspace.openTextDocument.mockRejectedValue(new Error('not found'));
+    workspace.fs.stat.mockRejectedValue(new Error('ENOENT'));
+
+    await openBookmark(bookmark, store);
+
+    expect(store.isStale(bookmark.id)).toBe(true);
+    expect(window.showErrorMessage).toHaveBeenCalledOnce();
+  });
+
+  it('does not mark the bookmark stale when the open fails but the file still exists', async () => {
+    const store = newStore();
+    const bookmark = makeBookmark();
+    store.addBookmark(bookmark);
+    workspace.openTextDocument.mockRejectedValue(new Error('binary file'));
+    workspace.fs.stat.mockResolvedValue({});
+
+    await openBookmark(bookmark, store);
+
+    expect(store.isStale(bookmark.id)).toBe(false);
+    expect(window.showErrorMessage).toHaveBeenCalledOnce();
+  });
+
+  it('clears a stale mark when the file opens successfully', async () => {
+    const store = newStore();
+    const bookmark = makeBookmark();
+    store.addBookmark(bookmark);
+    store.markStale(bookmark.id);
+    workspace.openTextDocument.mockResolvedValue({});
+
+    await openBookmark(bookmark, store);
+
+    expect(store.isStale(bookmark.id)).toBe(false);
   });
 
   it('reveals and selects the line range for a line/selection bookmark', async () => {
@@ -737,6 +783,58 @@ describe('moveToFolder', () => {
   });
 });
 
+describe('resolveBookmarkTargets', () => {
+  const nodeFor = (id: string) => ({ bookmark: makeBookmark({ id }) }) as any;
+
+  it('returns just the clicked item when there is no selection', () => {
+    expect(resolveBookmarkTargets(nodeFor('a')).map((b) => b.id)).toEqual(['a']);
+  });
+
+  it('returns just the clicked item when the selection is only that item', () => {
+    const a = nodeFor('a');
+    expect(resolveBookmarkTargets(a, [a]).map((b) => b.id)).toEqual(['a']);
+  });
+
+  it('returns every selected bookmark when the clicked item is part of a multi-selection', () => {
+    const [a, b, c] = [nodeFor('a'), nodeFor('b'), nodeFor('c')];
+    expect(resolveBookmarkTargets(b, [a, b, c]).map((x) => x.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('ignores folders in the selection', () => {
+    const [a, b] = [nodeFor('a'), nodeFor('b')];
+    const folderNode = { folder: makeFolder() } as any;
+    expect(resolveBookmarkTargets(a, [a, folderNode, b]).map((x) => x.id)).toEqual(['a', 'b']);
+  });
+
+  it('acts only on the clicked item when it is outside the selection', () => {
+    const [a, b, c] = [nodeFor('a'), nodeFor('b'), nodeFor('c')];
+    expect(resolveBookmarkTargets(c, [a, b]).map((x) => x.id)).toEqual(['c']);
+  });
+});
+
+describe('moveToFolder with a multi-selection', () => {
+  it('moves every selected bookmark and words the prompt for the count', async () => {
+    const store = newStore();
+    for (const id of ['a', 'b', 'c']) {
+      store.addBookmark(makeBookmark({ id, uri: `file:///repo/${id}.ts` }));
+    }
+    const folder = store.createFolder('Backend');
+    window.showQuickPick.mockResolvedValue('Backend');
+    const nodeFor = (id: string) => ({ bookmark: makeBookmark({ id }) }) as any;
+    const [a, b] = [nodeFor('a'), nodeFor('b')];
+
+    await moveToFolder(store, a, [a, b]);
+
+    const byId = new Map(store.getAllBookmarks().map((x) => [x.id, x.folderId]));
+    expect(byId.get('a')).toBe(folder.id);
+    expect(byId.get('b')).toBe(folder.id);
+    expect(byId.get('c')).toBeNull();
+    expect(window.showQuickPick.mock.calls[0][1]).toMatchObject({
+      placeHolder: 'Move 2 bookmarks to...',
+    });
+  });
+});
+
 describe('addBookmarksToFolder', () => {
   it('adds every target uri into the picked folder', async () => {
     const store = newStore();
@@ -951,5 +1049,141 @@ describe('goToBookmark', () => {
 
     expect(window.showQuickPick).toHaveBeenCalledOnce();
     expect(workspace.openTextDocument).not.toHaveBeenCalled();
+  });
+});
+
+describe('removeBrokenBookmarks', () => {
+  function seed(store: BookmarkStore) {
+    store.addBookmark(makeBookmark({ id: 'ok', uri: 'file:///repo/ok.ts' }));
+    store.addBookmark(makeBookmark({ id: 'gone1', uri: 'file:///repo/gone.ts' }));
+    store.addBookmark(
+      makeBookmark({ id: 'gone2', uri: 'file:///repo/gone.ts', lineStart: 3, lineEnd: 3 }),
+    );
+    workspace.fs.stat.mockImplementation(async (uri: Uri) => {
+      if (uri.fsPath.endsWith('gone.ts')) {
+        throw new Error('ENOENT');
+      }
+      return {};
+    });
+  }
+
+  it('stats each distinct file once, marks missing bookmarks, and removes them after confirmation', async () => {
+    const store = newStore();
+    seed(store);
+    window.showWarningMessage.mockResolvedValue('Remove');
+
+    await removeBrokenBookmarks(store);
+
+    expect(workspace.fs.stat).toHaveBeenCalledTimes(2);
+    expect(window.showWarningMessage.mock.calls[0][0]).toContain('2 broken bookmark');
+    expect(store.getAllBookmarks().map((b) => b.id)).toEqual(['ok']);
+  });
+
+  it('keeps the broken bookmarks, marked stale, when the user declines', async () => {
+    const store = newStore();
+    seed(store);
+    window.showWarningMessage.mockResolvedValue(undefined);
+
+    await removeBrokenBookmarks(store);
+
+    expect(store.getAllBookmarks()).toHaveLength(3);
+    expect(store.isStale('gone1')).toBe(true);
+    expect(store.isStale('gone2')).toBe(true);
+    expect(store.isStale('ok')).toBe(false);
+  });
+
+  it('reports when nothing is broken and does not prompt', async () => {
+    const store = newStore();
+    store.addBookmark(makeBookmark());
+    workspace.fs.stat.mockResolvedValue({});
+
+    await removeBrokenBookmarks(store);
+
+    expect(window.showInformationMessage).toHaveBeenCalledWith('No broken bookmarks found.');
+    expect(window.showWarningMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('copy path / reveal actions', () => {
+  it('copies the absolute path of the bookmarked file', async () => {
+    await copyBookmarkPath(makeBookmark({ uri: 'file:///repo/src/a.ts' }));
+
+    expect(env.clipboard.writeText).toHaveBeenCalledWith('/repo/src/a.ts');
+  });
+
+  it('copies the workspace-relative path of the bookmarked file', async () => {
+    await copyBookmarkRelativePath(makeBookmark({ relativePath: 'src/a.ts' }));
+
+    expect(env.clipboard.writeText).toHaveBeenCalledWith('src/a.ts');
+  });
+
+  it("reveals the bookmarked file in VS Code's Explorer", async () => {
+    await revealBookmarkInExplorer(makeBookmark({ uri: 'file:///repo/src/a.ts' }));
+
+    expect(commands.executeCommand).toHaveBeenCalledWith(
+      'revealInExplorer',
+      expect.objectContaining({ fsPath: '/repo/src/a.ts' }),
+    );
+  });
+
+  it('reveals the bookmarked file in the OS file manager', async () => {
+    await revealBookmarkInFileManager(makeBookmark({ uri: 'file:///repo/src/a.ts' }));
+
+    expect(commands.executeCommand).toHaveBeenCalledWith(
+      'revealFileInOS',
+      expect.objectContaining({ fsPath: '/repo/src/a.ts' }),
+    );
+  });
+});
+
+describe('setFolderAppearance', () => {
+  it('stores the chosen icon and color on the folder', async () => {
+    const store = newStore();
+    const folder = store.createFolder('Backend');
+    window.showQuickPick
+      .mockResolvedValueOnce({ label: '$(server) Server', iconId: 'server' })
+      .mockResolvedValueOnce({ label: 'Red', colorId: 'charts.red' });
+
+    await setFolderAppearance(store, new FolderGroupItem(folder, []));
+
+    expect(store.getAllFolders()[0]).toMatchObject({ icon: 'server', color: 'charts.red' });
+  });
+
+  it('clears the appearance when Default is chosen for both steps', async () => {
+    const store = newStore();
+    const folder = store.createFolder('Backend');
+    store.setFolderAppearance(folder.id, { icon: 'server', color: 'charts.red' });
+    window.showQuickPick
+      .mockResolvedValueOnce({ label: 'Default', iconId: undefined })
+      .mockResolvedValueOnce({ label: 'Default', colorId: undefined });
+
+    await setFolderAppearance(store, new FolderGroupItem(store.getAllFolders()[0], []));
+
+    const stored = store.getAllFolders()[0];
+    expect(stored).not.toHaveProperty('icon');
+    expect(stored).not.toHaveProperty('color');
+  });
+
+  it('leaves the folder untouched when the icon pick is cancelled', async () => {
+    const store = newStore();
+    const folder = store.createFolder('Backend');
+    window.showQuickPick.mockResolvedValueOnce(undefined);
+
+    await setFolderAppearance(store, new FolderGroupItem(folder, []));
+
+    expect(window.showQuickPick).toHaveBeenCalledOnce();
+    expect(store.getAllFolders()[0]).not.toHaveProperty('icon');
+  });
+
+  it('leaves the folder untouched when the color pick is cancelled', async () => {
+    const store = newStore();
+    const folder = store.createFolder('Backend');
+    window.showQuickPick
+      .mockResolvedValueOnce({ label: '$(server) Server', iconId: 'server' })
+      .mockResolvedValueOnce(undefined);
+
+    await setFolderAppearance(store, new FolderGroupItem(folder, []));
+
+    expect(store.getAllFolders()[0]).not.toHaveProperty('icon');
   });
 });
