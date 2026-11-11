@@ -208,6 +208,7 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
   const treeView = vscode.window.createTreeView('workspace-file-bookmarks-view', {
     treeDataProvider: provider,
     showCollapseAll: true,
+    canSelectMany: true,
     dragAndDropController: provider,
   });
 
@@ -243,7 +244,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.removeBookmark',
-      (item: BookmarkTreeItem) => store.removeBookmark(item.bookmark.id),
+      (item: BookmarkTreeItem, selection?: readonly TreeNode[]) =>
+        store.removeBookmarks(resolveBookmarkTargets(item, selection).map((b) => b.id)),
     ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.renameBookmark',
@@ -291,7 +293,8 @@ export function activate(context: vscode.ExtensionContext): ExtensionApi {
     ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.moveToFolder',
-      (item: BookmarkTreeItem) => moveToFolder(store, item),
+      (item: BookmarkTreeItem, selection?: readonly TreeNode[]) =>
+        moveToFolder(store, item, selection),
     ),
     vscode.commands.registerCommand(
       'workspace-file-bookmarks.openAllInFolder',
@@ -385,8 +388,22 @@ export class BookmarkStore {
     this.setBookmarks(this.getAllBookmarks().filter((b) => b.id !== id));
   }
 
+  /** Removes several bookmarks in one write, so the tree refreshes once. */
+  removeBookmarks(ids: string[]) {
+    const idSet = new Set(ids);
+    this.setBookmarks(this.getAllBookmarks().filter((b) => !idSet.has(b.id)));
+  }
+
   moveBookmarkToFolder(id: string, folderId: string | null) {
-    this.setBookmarks(this.getAllBookmarks().map((b) => (b.id === id ? { ...b, folderId } : b)));
+    this.moveBookmarksToFolder([id], folderId);
+  }
+
+  /** Moves several bookmarks to a folder (or the root) in one write. */
+  moveBookmarksToFolder(ids: string[], folderId: string | null) {
+    const idSet = new Set(ids);
+    this.setBookmarks(
+      this.getAllBookmarks().map((b) => (idSet.has(b.id) ? { ...b, folderId } : b)),
+    );
   }
 
   renameBookmark(id: string, label: string) {
@@ -1232,12 +1249,41 @@ export function dropBookmark(
   store.reorderBookmarks(computeReorderedIds(scope, draggedId, beforeId, bookmarkFallbackCompare));
 }
 
-export async function moveToFolder(store: BookmarkStore, item: BookmarkTreeItem) {
-  const folderId = await pickFolder(store, `Move "${item.bookmark.label}" to...`);
+/**
+ * The bookmarks a tree command should act on. When the command is invoked from a multi-selected
+ * context menu, VS Code passes the clicked item plus the whole selection; if the clicked item is
+ * part of that selection the action applies to every selected bookmark (folders in the selection
+ * are ignored), otherwise just to the clicked item.
+ */
+export function resolveBookmarkTargets(
+  item: BookmarkTreeItem,
+  selection?: readonly TreeNode[],
+): Bookmark[] {
+  const selected = (selection ?? []).filter((node): node is BookmarkTreeItem => 'bookmark' in node);
+  if (selected.length > 1 && selected.some((n) => n.bookmark.id === item.bookmark.id)) {
+    return selected.map((n) => n.bookmark);
+  }
+  return [item.bookmark];
+}
+
+export async function moveToFolder(
+  store: BookmarkStore,
+  item: BookmarkTreeItem,
+  selection?: readonly TreeNode[],
+) {
+  const targets = resolveBookmarkTargets(item, selection);
+  const placeHolder =
+    targets.length > 1
+      ? `Move ${targets.length} bookmarks to...`
+      : `Move "${item.bookmark.label}" to...`;
+  const folderId = await pickFolder(store, placeHolder);
   if (folderId === undefined) {
     return;
   }
-  store.moveBookmarkToFolder(item.bookmark.id, folderId);
+  store.moveBookmarksToFolder(
+    targets.map((b) => b.id),
+    folderId,
+  );
 }
 
 /** Writes all bookmarks and folders to a JSON file the user picks via a save dialog. */

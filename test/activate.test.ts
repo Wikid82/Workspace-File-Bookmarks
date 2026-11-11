@@ -11,6 +11,10 @@ describe('activate', () => {
     activate(context as any);
 
     expect(window.createTreeView).toHaveBeenCalledOnce();
+    expect(window.createTreeView).toHaveBeenCalledWith(
+      'workspace-file-bookmarks-view',
+      expect.objectContaining({ canSelectMany: true }),
+    );
     expect(commands.registerCommand).toHaveBeenCalledTimes(25);
     expect((context as any).subscriptions).toHaveLength(26); // tree view + 25 commands
   });
