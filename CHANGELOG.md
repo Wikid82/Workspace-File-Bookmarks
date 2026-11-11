@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.13.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.12.1...workspace-file-bookmarks-v1.13.0) (2026-11-11)
+
+
+### Features
+
+* add copy path and reveal actions to the bookmark context menu ([7039553](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/7039553b6ba31fa0be05e818e9a32bb67795ceca)), closes [#49](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/49)
+* add copy path and reveal actions to the bookmark context menu ([#128](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/128)) ([1c96ea1](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/1c96ea1e9258477b0f0a6122a26c03111935a957))
+* apply remove and move-to-folder to every selected bookmark ([de97a26](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/de97a26825fd81fdc4df1a9103c8cc427de3f24f)), closes [#48](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/48)
+* apply remove and move-to-folder to every selected bookmark ([#127](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/127)) ([8a6dfaa](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/8a6dfaa60ea6223f484d2a0ea27a769c50d22f84))
+* detect stale bookmarks and add a Remove Broken Bookmarks sweep ([745be42](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/745be428feda5b7a0f0da177eeee78dc986fa625)), closes [#46](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/46)
+* detect stale bookmarks and add a Remove Broken Bookmarks sweep ([#126](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/126)) ([92e06f0](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/92e06f0693b2a34b8a6d2ac05cdef2f53d32289d))
+* let users set a custom icon and color per bookmark folder ([acd9d3d](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/acd9d3d2648d6f2f746c9e637e97d1a9ec269ad2)), closes [#50](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/50)
+* let users set a custom icon and color per bookmark folder ([#129](https://github.com/Wikid82/Workspace-File-Bookmarks/issues/129)) ([c443576](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/c443576d42e58bcd2983e4074408a029a71f3def))
+
+
+### Bug Fixes
+
+* **deps:** update @typescript/native to version 7.1.0-dev.20261109.1 ([5f58db1](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/5f58db189708d7fdd5c2317ebde36c9f4020f504))
+* **deps:** update @typescript/native to version 7.1.0-dev.20261110.1 ([3161629](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/3161629885d9ec07258993d177f666a4fa5970bf))
+* **deps:** update TypeScript ESLint packages and add update script ([0a979b5](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/0a979b5bcc50546b60ffc41c3976a8ca0fd12d08))
+* **deps:** update vite to version 8.3.7 ([11f973a](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/11f973adb6017598dee4db7f44430d5344c0f558))
+* **deps:** update vite to version 8.3.8 ([154f197](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/154f1979793270f017d262703b1c5fc962faea3c))
+* **deps:** update vscode and @types/vscode to version 1.146.0 ([0708886](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/07088866bcf553ee6a25736a92579d9ff81b3bb6))
+
 ## [1.12.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.12.0...workspace-file-bookmarks-v1.12.1) (2026-11-09)
 
 
