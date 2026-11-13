@@ -413,7 +413,7 @@
     "test:e2e": "vscode-test"
   },
   "overrides": {
-    "@azure/msal-node": "^7.2.1",
+    "@azure/msal-node": "^7.2.2",
     "diff": "^9.0.0",
     "serialize-javascript": "^7.1.4"
   },
