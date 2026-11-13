@@ -14,7 +14,7 @@ for MODULE in "${NPM_MODULES[@]}"; do
 
     cd "$MODULE" || exit 1
     rm -rf node_modules package-lock.json
-    npm install @types/vscode --save-dev
+    npm install @types/vscode @vscode/vsce --save-dev
 
     # Keep engines.vscode in lockstep with @types/vscode — vsce refuses to
     # package when engines.vscode is behind it. Single-quoted on purpose: the
