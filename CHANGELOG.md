@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.13.0...workspace-file-bookmarks-v1.13.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **deps:** update dependencyDashboard structure to enable option ([5ac3755](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/5ac375566bfdc54974a0bce1f7e8e5c94812fe48))
+
 ## [1.13.0](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.12.1...workspace-file-bookmarks-v1.13.0) (2026-11-11)
 
 
