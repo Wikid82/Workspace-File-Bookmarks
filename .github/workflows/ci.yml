@@ -56,7 +56,7 @@ jobs:
       # with wfb_dep_update.sh's audit gate, but runs on every push/PR instead of
       # only when that script is invoked manually.
       - name: Audit dependencies
-        run: npm audit --audit-level=high
+        run: npx audit-ci
 
       - name: Lint
         run: npm run lint

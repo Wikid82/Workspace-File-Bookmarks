@@ -73,7 +73,7 @@ for (( i=0; i<${#NPM_MODULES[@]}; i++ )); do
     npm run lint
     npm run test
     # Fails on high/critical findings; moderate/low are allowed through.
-    npm audit --audit-level=high
+    npx audit-ci
     npm audit fix --legacy-peer-deps || true
     npm outdated || true
 
