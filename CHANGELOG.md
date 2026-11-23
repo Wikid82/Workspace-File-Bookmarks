@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.13.2](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.13.1...workspace-file-bookmarks-v1.13.2) (2026-11-23)
+
+
+### Bug Fixes
+
+* **deps:** update @azure/msal-browser, @azure/msal-common, and @azure/msal-node to latest versions ([4b1df10](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/4b1df10ea09c4b4a7ae1ae9d0d75948f019e2186))
+* **deps:** update @typescript/native and babel packages to latest versions ([d8522c8](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/d8522c881c681e41dbc523df9fdcb5603bbc1419))
+* **deps:** update @typescript/native to version 7.1.0-dev.20261116.1 ([b45cd16](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/b45cd16b1d7a1d6c902f3ce343a44df4229a5f73))
+* **deps:** update @typescript/native to version 7.1.0-dev.20261117.1 ([5560eda](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/5560eda506d437b9cbc6e78d8c356570c01e6a0e))
+* **deps:** update @typescript/native to version 7.1.0-dev.20261118.1 ([8eb679e](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/8eb679e7f288041657e9c58d1a26d325f202bb4b))
+* **deps:** update @typescript/native to version 7.1.0-dev.20261119.1 ([3933fdf](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/3933fdf996e7200207858e177fe5c7cd8f517e74))
+* **deps:** update @typescript/native to version 7.1.0-dev.20261120.1 ([07286dc](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/07286dcb27610c87b660d385e03544669e192f32))
+* **deps:** update CodeQL action versions to v4.39.4 ([2705e18](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/2705e184e4d8449dd167c2e47c5ba5408b272feb))
+* **deps:** update typescript-eslint dependencies to version 8.73.0 ([1d1baaf](https://github.com/Wikid82/Workspace-File-Bookmarks/commit/1d1baaf45200ca9625c12bab9e37402fad32d27d))
+
 ## [1.13.1](https://github.com/Wikid82/Workspace-File-Bookmarks/compare/workspace-file-bookmarks-v1.13.0...workspace-file-bookmarks-v1.13.1) (2026-11-16)
 
 
